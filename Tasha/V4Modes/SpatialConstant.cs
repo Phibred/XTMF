@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright 2014 Travel Modelling Group, Department of Civil Engineering, University of Toronto
+    Copyright 2014-2018 Travel Modelling Group, Department of Civil Engineering, University of Toronto
 
     This file is part of XTMF.
 
@@ -21,6 +21,7 @@ using XTMF;
 using Datastructure;
 using TMG.Functions;
 using TMG;
+using System.Threading.Tasks;
 
 namespace Tasha.V4Modes
 {
@@ -41,6 +42,97 @@ namespace Tasha.V4Modes
         public float Progress { get; set; }
 
         public Tuple<byte, byte, byte> ProgressColour { get { return new Tuple<byte, byte, byte>(50, 150, 50); } }
+
+        public bool RuntimeValidation(ref string error)
+        {
+            return true;
+        }
+    }
+
+    [ModuleInformation(Description = "This module provides the ability to load an OD value depending on the time of day.")]
+    public sealed class TimePeriodMatrix : IModule
+    {
+        public string Name { get; set; }
+
+        public float Progress => 0f;
+
+        public Tuple<byte, byte, byte> ProgressColour => new Tuple<byte, byte, byte>(50, 150, 50);
+
+        [RunParameter("Default Value", 0.0f, "The default value to use if the data is not defined.")]
+        public float DefaultValue;
+
+        public sealed class TimeMatrix : IModule
+        {
+            public string Name { get; set; }
+
+            public float Progress => 0f;
+
+            public Tuple<byte, byte, byte> ProgressColour => new Tuple<byte, byte, byte>(50,150,50);
+
+            [RunParameter("Start Time", "6:00AM", typeof(Time), "The start time for this time period, inclusive.")]
+            public Time StartTime;
+
+            [RunParameter("End Time", "9:00AM", typeof(Time), "The end time for this time period, exclusive.")]
+            public Time EndTime;
+
+            [SubModelInformation(Required = true, Description = "The matrix to use for this time period.")]
+            public IDataSource<SparseTwinIndex<float>> Matrix;
+
+            internal float[][] _matrix;
+
+            public void Load()
+            {
+                Matrix.LoadData();
+                _matrix = Matrix.GiveData()?.GetFlatData();
+            }
+
+            public void Unload()
+            {
+                Matrix.UnloadData();
+                _matrix = null;
+            }
+
+            public bool RuntimeValidation(ref string error)
+            {
+                if(EndTime <= StartTime)
+                {
+                    error = $"In {Name} the end time was not after the start time!";
+                    return false;
+                }
+                return true;
+            }
+            
+        }
+        [SubModelInformation(Description = "The time periods to support.")]
+        public TimeMatrix[] TimePeriods;
+
+        public void LoadData()
+        {
+            Parallel.For(0, TimePeriods.Length, (int i) =>
+            {
+                TimePeriods[i].Load();
+            });
+        }
+
+        public void UnloadData()
+        {
+            foreach(var tp in TimePeriods)
+            {
+                tp.Unload();
+            }
+        }
+
+        public float GetValueFromFlat(Time time, int flatOrigin, int flatDestination)
+        {
+            foreach(var tp in TimePeriods)
+            {
+                if(time >= tp.StartTime && time <= tp.EndTime)
+                {
+                    return tp._matrix?[flatOrigin][flatDestination] ?? DefaultValue;   
+                }
+            }
+            return DefaultValue;
+        }
 
         public bool RuntimeValidation(ref string error)
         {
