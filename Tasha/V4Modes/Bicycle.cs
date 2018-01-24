@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with XTMF.  If not, see <http://www.gnu.org/licenses/>.
 */
+using Datastructure;
 using System;
 using Tasha.Common;
 using TMG;
@@ -28,7 +29,7 @@ namespace Tasha.V4Modes
     /// </summary>
     [ModuleInformation(Description =
         @"This module is designed to implement the Bicycle mode for GTAModel V4.0+.")]
-    public sealed class Bicycle : ITashaMode
+    public sealed class Bicycle : ITashaMode, IIterationSensitive
     {
         [RootModule]
         public ITashaRuntime Root;
@@ -89,7 +90,15 @@ namespace Tasha.V4Modes
         [RunParameter("NonWorkerStudentConstant", 0f, "The constant applied to the person type.")]
         public float NonWorkerStudentConstant;
 
+        [SubModelInformation(Required = false, Description = "Augments for utility by time period, zone to zone.")]
+        public TimePeriodMatrix UtilityAugmentation;
+
+        private SparseArray<IZone> _zoneSystem;
+
         private float AvgTravelSpeed;
+
+        [RunParameter("BikeShare Zones", "", "A set of zones that will allow a bike trip without requiring the bike across the full tour.")]
+        public RangeSet BikeShareZones;
 
         /// <summary>
         /// Avg speed of riding a bike
@@ -188,14 +197,18 @@ namespace Tasha.V4Modes
         public double CalculateV(ITrip trip)
         {
             float v = 0;
+            var oZone = trip.OriginalZone;
+            var dZone = trip.DestinationZone;
+            var time = trip.ActivityStartTime;
             ITashaPerson person = trip.TripChain.Person;
             GetPersonVariables(person, out float timeFactor, out float constant);
             v += constant;
+            v += UtilityAugmentation?.GetValueFromFlat(time, _zoneSystem.GetFlatIndex(oZone.ZoneNumber), _zoneSystem.GetFlatIndex(dZone.ZoneNumber)) ?? 0.0f;
             if(trip.OriginalZone == trip.DestinationZone)
             {
                 v += IntrazonalConstant;
             }
-            v += timeFactor * TravelTime(trip.OriginalZone, trip.DestinationZone, trip.ActivityStartTime).ToMinutes();
+            v += timeFactor * TravelTime(oZone, dZone, time).ToMinutes();
             if(person.Youth)
             {
                 v += YouthFlag;
@@ -329,13 +342,20 @@ namespace Tasha.V4Modes
                 var trip = trips[i];
                 if(trip.Mode == this)
                 {
-                    anyBike = true;
-                    if(trip.OriginalZone != lastPlace)
+                    var oZone = trip.OriginalZone;
+                    if (oZone != lastPlace)
                     {
+                        // See if this could be a bike-share trip
+                        if(BikeShareZones.Contains(oZone.ZoneNumber) && BikeShareZones.Contains(trip.DestinationZone.ZoneNumber))
+                        {
+                            lastMadeWithBike = false;
+                            continue;
+                        }
                         return false;
                     }
                     lastPlace = trip.DestinationZone;
                     lastMadeWithBike = true;
+                    anyBike = true;
                 }
                 else
                 {
@@ -355,28 +375,15 @@ namespace Tasha.V4Modes
             return (observedMode == ObservedMode);
         }
 
-        /// <summary>
-        ///
-        /// </summary>
-        public void ModeChoiceIterationComplete()
+        public void IterationEnding(int iterationNumber, int maxIterations)
         {
-            //do nothing
+            UtilityAugmentation?.UnloadData();
         }
 
-        /// <summary>
-        ///
-        /// </summary>
-        public void ReleaseData()
+        public void IterationStarting(int iterationNumber, int maxIterations)
         {
-            //nothing to release
-        }
-
-        /// <summary>
-        ///
-        /// </summary>
-        public void ReloadNetworkData()
-        {
-            //no network data to reload
+            _zoneSystem = Root.ZoneSystem.ZoneArray;
+            UtilityAugmentation?.LoadData();
         }
 
         /// <summary>
