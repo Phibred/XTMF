@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with XTMF.  If not, see <http://www.gnu.org/licenses/>.
 */
+using Datastructure;
 using System;
 using Tasha.Common;
 using TMG;
@@ -95,6 +96,9 @@ namespace Tasha.V4Modes
         [RunParameter("ChildFlag", 0f, "Added to the utility if the person is a child.")]
         public float ChildFlag;
 
+        [SubModelInformation(Required = false, Description = "Augments for utility by time period, zone to zone.")]
+        public TimePeriodMatrix UtilityAugmentation;
+
         private float AvgWalkSpeed;
 
         [Parameter( "Demographic Category Feasible", 1f, "(Automated by IModeParameterDatabase)\r\nIs the currently processing demographic category feasible?" )]
@@ -105,6 +109,8 @@ namespace Tasha.V4Modes
 
         [SubModelInformation(Required = false, Description = "Constants for time of day")]
         public TimePeriodSpatialConstant[] TimePeriodConstants;
+
+        private SparseArray<IZone> _zoneSystem;
 
         /// <summary>
         /// What is the name of this mode?
@@ -156,6 +162,7 @@ namespace Tasha.V4Modes
             IZone origin = trip.OriginalZone;
             IZone destination = trip.DestinationZone;
             Time startTime = trip.ActivityStartTime;
+            v += UtilityAugmentation?.GetValueFromFlat(startTime, _zoneSystem.GetFlatIndex(origin.ZoneNumber), _zoneSystem.GetFlatIndex(destination.ZoneNumber)) ?? 0.0f;
             v += TravelTime(origin, destination, startTime).ToMinutes() * walkBeta;
 
 
@@ -352,15 +359,17 @@ namespace Tasha.V4Modes
 
         public void IterationEnding(int iterationNumber, int maxIterations)
         {
-            
+            UtilityAugmentation?.UnloadData();
         }
 
         public void IterationStarting(int iterationNumber, int maxIterations)
         {
-            for(int i = 0; i < TimePeriodConstants.Length; i++)
+            _zoneSystem = Root.ZoneSystem.ZoneArray;
+            for (int i = 0; i < TimePeriodConstants.Length; i++)
             {
                 TimePeriodConstants[i].BuildMatrix();
             }
+            UtilityAugmentation?.LoadData();
         }
     }
 }
