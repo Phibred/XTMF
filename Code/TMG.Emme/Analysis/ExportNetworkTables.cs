@@ -85,9 +85,9 @@ namespace TMG.EMME.Analysis
                     new ModellerControllerParameter("export_segments", BoolToString(ExportSegments)),
                 };
                 string ret = null;
-                return mc.Run(ToolName, parmeters, (p) => Progress = p, ref ret);
+                return mc.Run(this, ToolName, parmeters, (p) => Progress = p, ref ret);
             }
-            throw new XTMFRuntimeException($"In {Name}, the EMME controller was not for modeller!");
+            throw new XTMFRuntimeException(this, $"In {Name}, the EMME controller was not for modeller!");
         }
 
         /// <summary>
