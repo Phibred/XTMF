@@ -25,7 +25,12 @@
         <ContentControl Content="{Binding }"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Grid.Row="0" Name="ActiveRunContent">
             
         </ContentControl>
-        <ListView  Grid.Row="1" Name="ScheduledRuns" SelectionChanged="ScheduledRuns_OnSelectionChanged">
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"></ColumnDefinition>
+                <ColumnDefinition Width="1*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+        <ListView Name="ScheduledRuns" SelectionChanged="ScheduledRuns_OnSelectionChanged" Grid.Column="0">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Name"  Width="100" DisplayMemberBinding="{Binding Name}"/>
@@ -43,9 +48,28 @@
                     </GridViewColumn>
                     <GridViewColumn Header="Start Time"  Width="200" DisplayMemberBinding="{Binding StartTime}"/>
                     <GridViewColumn Header="Elapsed Time"  Width="200" DisplayMemberBinding="{Binding ElapsedTime}"/>
+                    <GridViewColumn Header="Actions"  Width="200">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid HorizontalAlignment="Stretch" >
+
+                                    <materialDesign:PackIcon Kind="Cancel" />
+                                </Grid>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                 </GridView>
             </ListView.View>
         
         </ListView>
+
+            <ListView Name="FinishedRuns"  Grid.Column="1">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Run Name"></GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+            </ListView>
+        </Grid>
     </Grid>
 </UserControl>

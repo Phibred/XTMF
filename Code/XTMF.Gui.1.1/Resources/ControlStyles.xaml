@@ -22,6 +22,17 @@
              xmlns:userControls="clr-namespace:XTMF.Gui.UserControls">
 
 
+    <Style x:Key="BorderHoverStyle" TargetType="StackPanel">
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Opacity" Value="1.0"></Setter>
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="False">
+                <Setter Property="Opacity" Value="0.7"></Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <PathGeometry x:Key="CancelIconPath" Figures="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z" FillRule="NonZero"/>
 
     <PathGeometry x:Key="Checkmark" Figures="M0,2 L0,4.8 L2.5,7.4 L7.1,2.8 L7.1,0 L2.5,4.6 z" />
@@ -474,152 +485,89 @@
         </Setter>
     </Style>
 
-    <Style x:Key="XtmfTabItem" TargetType="{x:Type TabItem}">
-        <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"></Setter>
+    <Style x:Key="XtmfTabItem" TargetType="{x:Type TabItem}" BasedOn="{StaticResource {x:Type TabItem}}">
+        <!--<Setter Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"></Setter>-->
         <Setter Property="HeaderTemplate">
             <Setter.Value>
+                
                 <DataTemplate>
-                    <ContentPresenter Margin="0" Content="{TemplateBinding Content}">
+                    <DataTemplate.Triggers>
+                    </DataTemplate.Triggers>
+                    <Border >
+                  <ContentPresenter Margin="0" Content="{TemplateBinding Content}" x:Name="HeaderContent" >
+                      <ContentPresenter.ContentTemplate>
+                          <DataTemplate>
+                                <StackPanel>
+                                        <TextBlock Text="{TemplateBinding Content}">
+                                     
+                                        </TextBlock>
+                                    </StackPanel>
+                              </DataTemplate>
 
-                        <ContentPresenter.LayoutTransform>
+                            </ContentPresenter.ContentTemplate>
+                    
+
+                            <ContentPresenter.LayoutTransform>
                             <RotateTransform Angle="90" />
                         </ContentPresenter.LayoutTransform>
                     </ContentPresenter>
+                    </Border>
                 </DataTemplate>
             </Setter.Value>
         </Setter>
-        <Setter Property="Template">
+       <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
-                    <Border Name="Border" BorderThickness="0,0,0,0" BorderBrush="Gainsboro" CornerRadius="0,0,0,0" Margin="0,0">
-                        <ContentPresenter x:Name="ContentSite"
+                    <Border Background="{DynamicResource PrimaryHueMidBrush}"  BorderThickness="0,0,0,0" CornerRadius="0,0,0,0" Margin="0,0" Padding="5,10" Name="ContentBorder">
+                        <ContentPresenter x:Name="ContentSite" 
                                         VerticalAlignment="Center"
                                         HorizontalAlignment="Center"
                                         ContentSource="Header"
-                                        Margin="5,10"/>
+                                        Margin="0"/>
+                        
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"></Setter>
-                        </Trigger>
 
-                        <Trigger SourceName="Border"  Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"></Setter>
-                        </Trigger>
-
-                        <Trigger Property="IsSelected" Value="False">
-                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"></Setter>
-                            <Setter Property="Opacity" Value="0.7"></Setter>
-                        </Trigger>
-
+                      
+                        <MultiTrigger >
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsSelected" Value="False" ></Condition>
+                                <Condition Property="IsMouseOver" Value="False" SourceName="ContentBorder"></Condition>
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.Setters>
+                                <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"></Setter>
+                              
+                                <Setter  Property="Foreground" Value="{DynamicResource PrimaryHueDarkForegroundBrush}"></Setter>
+                            </MultiTrigger.Setters>
+                        </MultiTrigger>
+                      
                         <MultiTrigger>
                             <MultiTrigger.Conditions>
-                                <Condition Property="IsSelected" Value="False"></Condition>
-                                <Condition Property="IsMouseOver" Value="True"></Condition>
+                                <Condition Property="IsSelected" Value="True"></Condition>
+                                <Condition Property="IsMouseOver" Value="False" SourceName="ContentBorder"></Condition>
                             </MultiTrigger.Conditions>
-
                             <MultiTrigger.Setters>
-                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryHueLightBrush}"></Setter>
-                                <Setter Property="Opacity" Value="0.7"></Setter>
+                                <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"></Setter>
+                              
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidForegroundBrush}"></Setter>
                             </MultiTrigger.Setters>
-
                         </MultiTrigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsSelected" Value="True"></Condition>
+                                <Condition Property="IsMouseOver" Value="True" SourceName="ContentBorder"></Condition>
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.Setters>
+                                <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource PrimaryHueLightBrush}"></Setter>
+                              
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightForegroundBrush}"></Setter>
+                            </MultiTrigger.Setters>
+                        </MultiTrigger> 
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
-
             </Setter.Value>
-        </Setter>
-
+        </Setter> 
     </Style>
-
-    <!-- Expander -->
-
-    <ControlTemplate x:Key="ExpanderToggleButton"
-                 TargetType="{x:Type ToggleButton}">
-        <Border x:Name="Border"
-          CornerRadius="15,15,15,15"
-          BorderThickness="2,2,2,2">
-            <Border.Background>
-                <SolidColorBrush Color="{DynamicResource ResourceKey=ControlBackgroundColour}" />
-            </Border.Background>
-            <Border.BorderBrush>
-                <SolidColorBrush Color="White" />
-            </Border.BorderBrush>
-            <VisualStateManager.VisualStateGroups>
-                <VisualStateGroup x:Name="CommonStates">
-                    <VisualState x:Name="Normal" />
-                    <VisualState x:Name="MouseOver">
-                        <Storyboard>
-                            <ColorAnimation Storyboard.TargetName="Border"
-                                          Storyboard.TargetProperty="(Panel.Background).
-                (SolidColorBrush.Color)" To="{DynamicResource ResourceKey=SelectionBlue}" Duration="0:0:0.5" />
-                        </Storyboard>
-                    </VisualState>
-                    <VisualState x:Name="Pressed">
-                        <Storyboard>
-                            <ColorAnimation Storyboard.TargetName="Border"
-                                          Storyboard.TargetProperty="(Panel.Background).
-                (SolidColorBrush.Color)" To="{DynamicResource ResourceKey=FocusColour}" Duration="0:0:0.5" />
-                        </Storyboard>
-                    </VisualState>
-                    <VisualState x:Name="Disabled">
-                        <Storyboard>
-                            <ColorAnimationUsingKeyFrames Storyboard.TargetName="Border"
-                                          Storyboard.TargetProperty="(Panel.Background).
-                (SolidColorBrush.Color)">
-                                <EasingColorKeyFrame KeyTime="0"
-                                   Value="{DynamicResource ResourceKey=ControlBackgroundColour}" />
-                            </ColorAnimationUsingKeyFrames>
-                            <ColorAnimationUsingKeyFrames Storyboard.TargetName="Border"
-                                          Storyboard.TargetProperty="(Panel.Background).
-                (SolidColorBrush.Color)">
-                                <EasingColorKeyFrame KeyTime="0"
-                                   Value="{DynamicResource ResourceKey=ControlBackgroundColour}" />
-                            </ColorAnimationUsingKeyFrames>
-                        </Storyboard>
-                    </VisualState>
-                </VisualStateGroup>
-                <VisualStateGroup x:Name="CheckStates">
-                    <VisualState x:Name="Checked">
-                        <Storyboard>
-                            <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.Visibility)"
-                                           Storyboard.TargetName="CollapsedArrow">
-                                <DiscreteObjectKeyFrame KeyTime="0"
-                                      Value="{x:Static Visibility.Hidden}" />
-                            </ObjectAnimationUsingKeyFrames>
-                            <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.Visibility)"
-                                           Storyboard.TargetName="ExpandededArrow">
-                                <DiscreteObjectKeyFrame KeyTime="0"
-                                      Value="{x:Static Visibility.Visible}" />
-                            </ObjectAnimationUsingKeyFrames>
-                        </Storyboard>
-                    </VisualState>
-                    <VisualState x:Name="Unchecked" />
-                    <VisualState x:Name="Indeterminate" />
-                </VisualStateGroup>
-            </VisualStateManager.VisualStateGroups>
-            <Grid>
-                <Path x:Name="CollapsedArrow"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Data="M 0 0 L 4 4 L 8 0 Z">
-                    <Path.Fill>
-                        <SolidColorBrush Color="White" />
-                    </Path.Fill>
-                </Path>
-                <Path x:Name="ExpandededArrow"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Visibility="Collapsed"
-            Data="M 0 4 L 4 0 L 8 4 Z">
-                    <Path.Fill>
-                        <SolidColorBrush Color="White" />
-                    </Path.Fill>
-                </Path>
-            </Grid>
-        </Border>
-    </ControlTemplate>
-
 
     <!-- Expander -->
 

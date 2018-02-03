@@ -182,14 +182,13 @@
     <Compile Include="Models\RunControllerDisplayModel.cs" />
     <Compile Include="Models\ValidationErrorDisplayModel.cs" />
     <Compile Include="Models\ViewModelBase.cs" />
-    <Compile Include="Resources\ForestTheme.cs" />
-    <Compile Include="Resources\WarmTheme.cs" />
     <Compile Include="UserControls\FlatButton.xaml.cs">
       <DependentUpon>FlatButton.xaml</DependentUpon>
     </Compile>
     <Compile Include="UserControls\FlatToolButton.xaml.cs">
       <DependentUpon>FlatToolButton.xaml</DependentUpon>
     </Compile>
+    <Compile Include="UserControls\Interfaces\ITabCloseListener.cs" />
     <Compile Include="UserControls\InterTabClient.cs" />
     <Compile Include="UserControls\ModuleContextControl.xaml.cs">
       <DependentUpon>ModuleContextControl.xaml</DependentUpon>
@@ -331,10 +330,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Resource Include="Resources\WarmTheme.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Resource>
     <Page Include="Resources\ForestTheme.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -403,10 +398,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Resource Include="Resources\DarkTheme.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Resource>
     <Page Include="UserControls\DocumentationControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
