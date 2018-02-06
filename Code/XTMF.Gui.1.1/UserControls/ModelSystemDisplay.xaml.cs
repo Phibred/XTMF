@@ -223,11 +223,19 @@ namespace XTMF.Gui.UserControls
         /// <returns></returns>
         public bool HandleTabClose()
         {
-            return !Session.CloseWillTerminate || !CanSaveModelSystem
+            bool value= !Session.CloseWillTerminate || !CanSaveModelSystem
                                                || MessageBox.Show(
                                                    "The model system has not been saved, closing this window will discard the changes!",
                                                    "Are you sure?", MessageBoxButton.OKCancel, MessageBoxImage.Question,
                                                    MessageBoxResult.Cancel) == MessageBoxResult.OK;
+
+            if (value)
+            {
+                
+                //Session.SaveRelease();
+            }
+
+            return value;
         }
 
         /// <summary>
@@ -2852,6 +2860,17 @@ namespace XTMF.Gui.UserControls
         private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             CanSaveModelSystem = true;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OpenProjectFolderToolbarButton_Click(object sender, RoutedEventArgs e)
+        {
+            var path = Path.Combine(Session.Configuration.ProjectDirectory, Session.ProjectEditingSession.Project.Name);
+            Process.Start(@path);
         }
     }
 }

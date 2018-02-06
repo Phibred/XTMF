@@ -27,9 +27,9 @@ namespace XTMF.Gui.UserControls
 
         private List<RunWindow> _runWindows;
 
-        private RunWindow _activeContent;
+        private FrameworkElement _activeContent;
 
-        public RunWindow ActiveContent
+        public FrameworkElement ActiveContent
         {
             get => _activeContent;
             set
@@ -49,7 +49,7 @@ namespace XTMF.Gui.UserControls
         public void CloseRun(RunWindow run)
         {
             SchedulerRunItem toRemove = null;
-            foreach (SchedulerRunItem item in ScheduledRuns.Items)
+            foreach (SchedulerRunItem item in FinishedRuns.Items)
             {
                 if (item.RunWindow == run)
                 {
@@ -60,14 +60,14 @@ namespace XTMF.Gui.UserControls
 
             if (toRemove != null)
             {
-                ScheduledRuns.Items.Remove(toRemove);
+                FinishedRuns.Items.Remove(toRemove);
             }
-            if (ActiveRunContent.DataContext == run)
+            if (Equals(ActiveRunContent.DataContext, run))
             {
                 ActiveRunContent.DataContext = Resources["DefaultDisplay"];
             }
 
-            ScheduledRuns.Items.Refresh();
+            FinishedRuns.Items.Refresh();
        
         }
 
@@ -90,7 +90,7 @@ namespace XTMF.Gui.UserControls
             Dispatcher.Invoke(new Action(()=>
             {
                 ActiveContent = run;
-                ScheduledRuns.Items.Add(new SchedulerRunItem(run));
+                ScheduledRuns.Items.Add(new SchedulerRunItem(run,this));
                 ActiveRunContent.DataContext = run;
             }));
         
@@ -116,92 +116,132 @@ namespace XTMF.Gui.UserControls
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    public class SchedulerRunItem : INotifyPropertyChanged
-    {
-
-        private string _statusText = String.Empty;
-        private string _elapsedTime = String.Empty;
-        private string _startTime = String.Empty;
-        public RunWindow RunWindow { get; set; }
-
-        private float _progress;
-
-        public string StartTime
-        {
-            get => _startTime;
-            set
-            {
-                _startTime = value;
-                OnPropertyChanged(nameof(StartTime));
-            }
-        }
-
-        public float Progress
-        {
-            get => _progress;
-            set
-            {
-                _progress = value;
-                OnPropertyChanged(nameof(Progress));
-            }
-        }
-
-        public string ElapsedTime
-        {
-            get => _elapsedTime;
-            set
-            {
-                _elapsedTime = value;
-                OnPropertyChanged(nameof(ElapsedTime));
-            }
-        }
-
-        public string Name { get; set; }
 
         /// <summary>
-        /// StatusText property
+        /// 
         /// </summary>
-        public string StatusText
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
-            get => _statusText;
-            set
+            SchedulerRunItem item = (sender as  Button).Tag as SchedulerRunItem;
+            Dispatcher.Invoke((new Action(() =>
             {
-                _statusText = value;
-                OnPropertyChanged(nameof(StatusText));
-            }
-        }
+                if (item.RunWindow.IsRunClearable)
+                {
+                    if (ActiveContent == item.RunWindow)
+                    {
+                        //ActiveContent = new RunWindow();
+                        ActiveContent = new StackPanel();
 
+                    }
+                    FinishedRuns.Items.Remove(item);
+                }
+            })));
+        }
 
         /// <summary>
-        /// Constructor of the ScheduleRunItem, takes in the RunWindow (run control) in the constructor.
+        /// 
         /// </summary>
-        /// <param name="runWindow"></param>
-        public SchedulerRunItem(RunWindow runWindow)
+        /// <param name="runItem"></param>
+        public void RemoveFromActiveRuns(SchedulerRunItem runItem)
         {
-            Name = runWindow.Run.RunName;
-            RunWindow = runWindow;
-
-            runWindow.UpdateRunStatus = (val) => { StatusText = val; };
-            runWindow.UpdateElapsedTime = (val) => { ElapsedTime = val; };
-            runWindow.UpdateRunProgress = (val) => { Progress = val; };
-            //runWindow.UpdateStartTime = (val) => { StartTime = val; };
-
-            StartTime = (string) $"{RunWindow.StartTime:g}";
-            Progress = 0;
-
+            Dispatcher.Invoke((new Action(() =>
+            {
+                ScheduledRuns.Items.Remove(runItem);
+                FinishedRuns.Items.Add(runItem);
+            })));
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        [NotifyPropertyChangedInvocator]
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        /// <summary>
+        /// 
+        /// </summary>
+        public class SchedulerRunItem : INotifyPropertyChanged
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+            private string _statusText = String.Empty;
+            private string _elapsedTime = String.Empty;
+            private string _startTime = String.Empty;
+            public RunWindow RunWindow { get; set; }
+            private SchedulerWindow _schedulerWindow;
+
+            private float _progress;
+
+            public string StartTime
+            {
+                get => _startTime;
+                set
+                {
+                    _startTime = value;
+                    OnPropertyChanged(nameof(StartTime));
+                }
+            }
+
+            public float Progress
+            {
+                get => _progress;
+                set
+                {
+                    _progress = value;
+                    OnPropertyChanged(nameof(Progress));
+                }
+            }
+
+            public string ElapsedTime
+            {
+                get => _elapsedTime;
+                set
+                {
+                    _elapsedTime = value;
+                    OnPropertyChanged(nameof(ElapsedTime));
+                }
+            }
+
+            public Action RunFinished;
+
+            public string Name { get; set; }
+
+            /// <summary>
+            /// StatusText property
+            /// </summary>
+            public string StatusText
+            {
+                get => _statusText;
+                set
+                {
+                    _statusText = value;
+                    OnPropertyChanged(nameof(StatusText));
+                }
+            }
+
+
+            /// <summary>
+            /// Constructor of the ScheduleRunItem, takes in the RunWindow (run control) in the constructor.
+            /// </summary>
+            /// <param name="runWindow"></param>
+            public SchedulerRunItem(RunWindow runWindow, SchedulerWindow schedulerWindow)
+            {
+                Name = runWindow.Run.RunName;
+                RunWindow = runWindow;
+                _schedulerWindow = schedulerWindow;
+
+                runWindow.UpdateRunStatus = (val) => { StatusText = val; };
+                runWindow.UpdateElapsedTime = (val) => { ElapsedTime = val; };
+                runWindow.UpdateRunProgress = (val) => { Progress = val; };
+                runWindow.OnRunFinished = () => { _schedulerWindow.RemoveFromActiveRuns(this); };
+
+                StartTime = (string) $"{RunWindow.StartTime:g}";
+                Progress = 0;
+
+            }
+
+            public event PropertyChangedEventHandler PropertyChanged;
+
+            [NotifyPropertyChangedInvocator]
+            protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
         }
     }
 
