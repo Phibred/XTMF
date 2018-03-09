@@ -505,21 +505,9 @@ namespace XTMF.Gui.UserControls
         private void ShowLinkedParameterDialog(bool assign = false)
         {
             var s = new LinkedParameterDisplay();
-            //s.LinkedParametersModel = ModelSystem.LinkedParameters;
-            //s.ShowLinkedParameterDisplay(assign);
-            //LinkedParametersDialogHost.DialogContent = s;
-            //LinkedParametersDialogHost.IsOpen = true;
-            //LinkedParameterDisplayOverlay.Show();
-
-
             LinkedParameterDisplayOverlay.LinkedParametersModel = ModelSystem.LinkedParameters;
             RunHost.DialogContent = LinkedParameterDisplayOverlay;
-
-
-            object x = RunHost.ShowDialog(LinkedParameterDisplayOverlay,OpenedEventHandler);
-
-            //RunHost.IsOpen = true;
-            //LinkedParameterDisplayOverlay.Show();
+            object x = RunHost.ShowDialog(LinkedParameterDisplayOverlay, OpenedEventHandler);
         }
 
         /// <summary>
@@ -530,6 +518,7 @@ namespace XTMF.Gui.UserControls
         private void OpenedEventHandler(object sender, DialogOpenedEventArgs eventArgs)
         {
             LinkedParameterDisplayOverlay.DialogOpenedEventArgs = eventArgs;
+            LinkedParameterDisplayOverlay.InitNewDisplay();
         }
 
         private bool AddCurrentParameterToLinkedParameter(LinkedParameterModel newLP)
@@ -918,6 +907,8 @@ namespace XTMF.Gui.UserControls
             {
 
             }
+
+       
 
             //LinkedParametersDialogHost.DialogContent = dialog;
             if (dialog.DidComplete)
@@ -2655,9 +2646,15 @@ namespace XTMF.Gui.UserControls
             SaveRequested(false);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="eventargs"></param>
         private void LinkedParametersDialogHost_OnDialogOpened(object sender, DialogOpenedEventArgs eventargs)
         {
             LinkedParameterDisplayOverlay.DialogOpenedEventArgs = eventargs;
+            LinkedParameterDisplayOverlay.InitNewDisplay();
         }
 
         /// <summary>
@@ -2799,7 +2796,8 @@ namespace XTMF.Gui.UserControls
         private void ParameterValueTextBox_OnGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
             UIElement current = sender as UIElement;
-            while(current != null)
+            (current as TextBox).SelectionStart = (current as TextBox).Text.Length ;
+            while (current != null)
             {
                 if(current is ListViewItem lvi)
                 {
