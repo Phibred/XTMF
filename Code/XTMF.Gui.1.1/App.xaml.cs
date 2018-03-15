@@ -36,32 +36,40 @@ namespace XTMF.Gui
                             s.Name == EditorController.Runtime.Configuration.PrimaryColour);
                         new PaletteHelper().ReplacePrimaryColor(swatch);
                     }
+                    else
+                    {
+                        var swatch = new SwatchesProvider().Swatches.First(s => s.Name.ToLower() == "blue");
+                        new PaletteHelper().ReplacePrimaryColor(swatch);
+                        EditorController.Runtime.Configuration.PrimaryColour = swatch.Name;
+                    }
 
 
                     if (EditorController.Runtime.Configuration.AccentColour != null)
                     {
                         var swatch = swatches.First(s => s.Name == EditorController.Runtime.Configuration.AccentColour);
                         new PaletteHelper().ReplaceAccentColor(swatch);
+                        EditorController.Runtime.Configuration.AccentColour = swatch.Name;
+                    }
+                    else
+                    {
+                        var swatch = swatches.First(s => s.Name.ToLower() == "amber");
+                        new PaletteHelper().ReplaceAccentColor(swatch);
                     }
 
-                    if (EditorController.Runtime.Configuration.IsDarkTheme) new PaletteHelper().SetLightDark(true);
+                    if (EditorController.Runtime.Configuration.IsDarkTheme)
+                    {
+                        new PaletteHelper().SetLightDark(true);
+
+                    }
+                    else
+                    {
+                       new PaletteHelper().SetLightDark(false);
+                    }
 
                     if (EditorController.Runtime.Configuration.IsDisableTransitionAnimations)
                         TransitionAssist.SetDisableTransitions(Gui.MainWindow.Us, false);
 
 
-                    if (EditorController.Runtime.Configuration.Theme == null)
-                    {
-                        //xtmfMainWindow.ThemeController.SetThemeActive(xtmfMainWindow.ThemeController.GetDefaultTheme());
-                    }
-                    else
-                    {
-                        var theme =
-                            xtmfMainWindow.ThemeController.FindThemeByName(EditorController.Runtime.Configuration
-                                .Theme);
-
-                        //xtmfMainWindow.ThemeController.SetThemeActive(theme ?? xtmfMainWindow.ThemeController.GetDefaultTheme());
-                    }
 
                     xtmfMainWindow.UpdateRecentProjectsMenu();
 

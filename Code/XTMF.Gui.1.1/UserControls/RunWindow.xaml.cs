@@ -66,6 +66,17 @@ namespace XTMF.Gui.UserControls
         private volatile bool _isActive;
         private volatile bool _isFinished;
 
+        public Visibility ProgressReportsVisibility
+        {
+
+            get
+            {
+                return _subProgressBars.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+                
+            }
+
+        }
+
         private ModelSystemDisplay _launchedFromModelSystemDisplay;
 
         private int _oldCaret;
@@ -90,12 +101,14 @@ namespace XTMF.Gui.UserControls
 
         static RunWindow()
         {
-            var findResource = Application.Current.FindResource("WarningRed");
-            if (findResource != null)
-            {
-                var errorColour = (Color) findResource;
-                ErrorColour = new Tuple<byte, byte, byte>(errorColour.R, errorColour.G, errorColour.B);
-            }
+            //var findResource = Application.Current.FindResource("WarningRed");
+           // if (findResource != null)
+            //{
+                //var errorColour = (Color) findResource;
+              //  ErrorColour = new Tuple<byte, byte, byte>(errorColour.R, errorColour.G, errorColour.B);
+            //}
+
+            ErrorColour = new Tuple<byte, byte, byte>(200,20,30);
         }
 
         /// <summary>
@@ -141,7 +154,7 @@ namespace XTMF.Gui.UserControls
             Run.ValidationError += RunOnValidationError;
 
             ErrorGroupBox.Visibility = Visibility.Collapsed;
-
+            BaseGrid.RowDefinitions[1].Height = new GridLength(0);
             _runDirectory = Run.RunDirectory;
             _timer = new DispatcherTimer {Interval = TimeSpan.FromMilliseconds(33)};
             _isFinished = false;
@@ -607,8 +620,8 @@ namespace XTMF.Gui.UserControls
                 var toAdd = _progressReports[e.NewIndex];
                 Dispatcher.Invoke(delegate
                 {
-                    AdditionDetailsPanelBorder.Visibility = Visibility.Visible;
-                    AdditionDetailsPanelBorder.Height = double.NaN;
+                    //AdditionDetailsPanelBorder.Visibility = Visibility.Visible;
+                    //AdditionDetailsPanelBorder.Height = 600;
                     var progressBar = new TMGProgressBar
                     {
                         Background = new SolidColorBrush(Color.FromArgb(0x22, 0x22, 0x22, 0x22)),
@@ -640,7 +653,7 @@ namespace XTMF.Gui.UserControls
                     Dispatcher.Invoke(delegate
                     {
                         //AdditionDetailsPanelBorder.Visibility = Visibility.Collapsed;
-                        AdditionDetailsPanelBorder.Height = 0;
+                        //AdditionDetailsPanelBorder.Height = 0;
                     });
                 }
             }
@@ -659,6 +672,11 @@ namespace XTMF.Gui.UserControls
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void SubProgressBars_ListChanged(object sender, ListChangedEventArgs e)
         {
             if (e.ListChangedType == ListChangedType.ItemAdded)
@@ -666,6 +684,16 @@ namespace XTMF.Gui.UserControls
                 var toAdd = _subProgressBars[e.NewIndex];
                 AdditionDetailsPanel.Add(toAdd.Name);
                 AdditionDetailsPanel.Add(toAdd.ProgressBar);
+            }
+
+            OnPropertyChanged(nameof(ProgressReportsVisibility));
+            if (_subProgressBars.Count == 0)
+            {
+                BaseGrid.RowDefinitions[1].Height = new GridLength(0);
+            }
+            else
+            {
+                BaseGrid.RowDefinitions[1].Height = new GridLength(250);
             }
         }
 
@@ -705,6 +733,11 @@ namespace XTMF.Gui.UserControls
             return false;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void ClearRunButton_Click(object sender, RoutedEventArgs e)
         {
             Dispatcher.BeginInvoke(new Action(() =>
@@ -803,6 +836,9 @@ namespace XTMF.Gui.UserControls
         }
     }
 
+    /// <summary>
+    /// Error Display Model for the error list in the run window.
+    /// </summary>
     public class ModelSystemErrorDisplayModel : INotifyPropertyChanged
     {
         private string _description;
