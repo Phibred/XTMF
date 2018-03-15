@@ -97,6 +97,8 @@ namespace XTMF.Gui
 
         private OperationProgressing operationProgressing;
 
+        
+
         public MainWindow()
         {
             ViewModelBase = new ViewModelBase();
@@ -776,7 +778,7 @@ namespace XTMF.Gui
             return Project.ValidateProjectName(name);
         }
 
-        internal void EditModelSystem(ModelSystemEditingSession modelSystemSession, string titleBar = null)
+        internal ModelSystemDisplay EditModelSystem(ModelSystemEditingSession modelSystemSession, string titleBar = null)
         {
             if (modelSystemSession != null)
             {
@@ -822,7 +824,10 @@ namespace XTMF.Gui
                 doc.IsSelected = true; */
                 Keyboard.Focus(display);
                 display.Focus();
+                return display;
             }
+
+            return null;
         }
 
         internal static void MakeWindowActive(UIElement switchTo)
@@ -987,9 +992,10 @@ namespace XTMF.Gui
         /// <param name="run"></param>
         /// <param name="runName"></param>
         /// <returns></returns>
-        internal RunWindow CreateRunWindow(ModelSystemEditingSession session, XTMFRun run, string runName)
+        internal RunWindow CreateRunWindow(ModelSystemEditingSession session, XTMFRun run, string runName,
+            bool immediateRun = false, ModelSystemDisplay launchDisplay = null)
         {
-            var runWindow = new RunWindow(session, run, runName);
+            var runWindow = new RunWindow(session, run, runName, immediateRun, launchDisplay);
 
             return runWindow;
         }
@@ -1168,7 +1174,7 @@ namespace XTMF.Gui
                 {
                     if (ContentControl.DataContext is ViewModelBase)
                     {
-                        ((ViewModelBase)ContentControl.DataContext).ViewModelControl = display;
+                        ((ViewModelBase) ContentControl.DataContext).ViewModelControl = display;
                     }
                     //((ViewModelBase) ContentControl.DataContext).ViewTitle = title;
                     //((ViewModelBase) ContentControl.DataContext).IsSearchBoxVisible = searchable;
@@ -1386,6 +1392,34 @@ namespace XTMF.Gui
         private void NewProjectButton_Click(object sender, MouseButtonEventArgs e)
         {
             NewProject();
+        }
+
+        /// <summary>
+        ///     Attempts to bring a display into view. Nothing occurs when the display is not already
+        ///     created.
+        /// </summary>
+        /// <param name="display"></param>
+        /// <param name="extraData"></param>
+        /// <returns></returns>
+        public async Task<bool> BringDisplayIntoView(UserControl display, object extraData)
+        {
+            var isFound = false;
+            await Dispatcher.InvokeAsync(() =>
+            {
+                foreach (TabItem tab in DockManager.Items)
+                {
+                    if (tab.Content == display)
+                    {
+                        tab.IsSelected = true;
+                        isFound = true;
+                        (display as IResumableControl)?.RestoreWithData(extraData);
+                        break;
+                    }
+                }
+            });
+
+
+            return isFound;
         }
     }
 }

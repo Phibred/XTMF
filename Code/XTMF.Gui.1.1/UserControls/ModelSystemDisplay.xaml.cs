@@ -48,7 +48,7 @@ namespace XTMF.Gui.UserControls
     /// <summary>
     ///     Interaction logic for ModelSystemDisplay.xaml
     /// </summary>
-    public partial class ModelSystemDisplay : UserControl, ITabCloseListener, INotifyPropertyChanged
+    public partial class ModelSystemDisplay : UserControl, ITabCloseListener, INotifyPropertyChanged, IResumableControl
     {
         public static readonly DependencyProperty ModelSystemProperty = DependencyProperty.Register("ModelSystem",
             typeof(ModelSystemModel), typeof(ModelSystemDisplay),
@@ -925,14 +925,17 @@ namespace XTMF.Gui.UserControls
                 if (runQuestion == MessageBoxResult.Yes || runQuestion == MessageBoxResult.No)
                 {
                     var run = Session.Run(runName, ref error, runQuestion == MessageBoxResult.Yes ? true : false,
-                        !dialog.IsQueueRun);
+                        !dialog.IsQueueRun,false);
+
                     if (run != null)
                     {
                         ModuleValidationErrorListView.Items.Clear();
                         ModuleRuntimeValidationErrorListView.Items.Clear();
                         ModuleRuntimeErrorListView.Items.Clear();
                         MainWindow.Us.UpdateStatusDisplay("Running Model System");
-                        var runWindow = MainWindow.Us.CreateRunWindow(Session, run, runName);
+                        
+                        //pass this as launchedFrom display in case model system run encounters an error
+                        var runWindow = MainWindow.Us.CreateRunWindow(Session, run, runName, !dialog.IsQueueRun,this);
                         MainWindow.Us.AddRunToSchedulerWindow(runWindow);
                     }
                     else
@@ -1005,13 +1008,7 @@ namespace XTMF.Gui.UserControls
 
         public event Action<object> RequestClose;
 
-        private void TextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (sender is TextBox box)
-            {
-                box.GetBindingExpression(TextBox.TextProperty).UpdateSource();
-            }
-        }
+
 
         private void SaveCurrentlySelectedParameters()
         {
@@ -1406,6 +1403,9 @@ namespace XTMF.Gui.UserControls
             UpdateParameters();
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
         private void UpdateParameters()
         {
             var parameters = GetActiveParameters();
@@ -1437,6 +1437,8 @@ namespace XTMF.Gui.UserControls
                         ParameterFilterBox.Display = ParameterDisplay;
                         ParameterFilterBox.Filter = FilterParameters;
                         ParameterFilterBox.RefreshFilter();
+
+                
                         var type = CurrentlySelected.Count == 1 ? CurrentlySelected[0].Type : null;
                         if (type != null)
                         {
@@ -1472,7 +1474,7 @@ namespace XTMF.Gui.UserControls
                         }
 
                         ParameterDisplay.Opacity = 1.0;
-                    });
+                    },DispatcherPriority.Render);
                 });
             }
             else
@@ -1791,7 +1793,7 @@ namespace XTMF.Gui.UserControls
 
         private void CleanUpParameters()
         {
-            ParameterDisplay.BeginAnimation(OpacityProperty, null);
+           // ParameterDisplay.BeginAnimation(OpacityProperty, null);
         }
 
         private void LinkedParameters_Click(object sender, RoutedEventArgs e)
@@ -2796,7 +2798,11 @@ namespace XTMF.Gui.UserControls
         private void ParameterValueTextBox_OnGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
             UIElement current = sender as UIElement;
-            (current as TextBox).SelectionStart = (current as TextBox).Text.Length ;
+            if ((current as TextBox) != null)
+            {
+                (current as TextBox).SelectionStart = (current as TextBox).Text.Length;
+            }
+
             while (current != null)
             {
                 if(current is ListViewItem lvi)
@@ -2869,6 +2875,55 @@ namespace XTMF.Gui.UserControls
             if (e.Key == Key.Escape)
             {
                 QuickParameterDialogHost.IsOpen = false;
+            }
+        }
+
+        private void ParameterDisplay_SourceUpdated(object sender, System.Windows.Data.DataTransferEventArgs e)
+        {
+         
+        }
+
+        /// <summary>
+        /// Restores this view with the passed data. If ErrorWithPath is passed as the data, the selected
+        /// module is attempted to be brought into view by the path data.
+        /// </summary>
+        /// <param name="data"></param>
+        public void RestoreWithData(object data)
+        {
+            if (data is ErrorWithPath error)
+            {
+                var current = DisplayRoot;
+
+                bool fail = false;
+                for (int i = 0; i < error.Path.Count; i++)
+                {
+                    current.IsExpanded = true;
+                    if (current.Children.Count > error.Path[i])
+                    {
+                        current = current.Children[error.Path[i]];
+                    }
+                    else
+                    {
+                        fail = true;
+                        break;
+                    }
+                }
+
+                if (!fail)
+                {
+
+                    if (current != null) //should not happen...
+                    {
+                        BringSelectedIntoView(current);
+                        current.IsSelected = true;
+                    }
+
+                }
+                else
+                {
+                    MessageBox.Show("Referenced module is unable to be found in the current state of the model system.",
+                        "Error Displaying Module", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
     }

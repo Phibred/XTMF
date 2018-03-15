@@ -129,6 +129,8 @@ namespace XTMF
         /// </summary>
         public event Action<List<ErrorWithPath>> ValidationError;
 
+        public event Action Test;
+
         /// <summary>
         /// An event that fires when Model Validation starts
         /// </summary>
@@ -220,14 +222,19 @@ namespace XTMF
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="errorMessage"></param>
         protected void InvokeRuntimeValidationError(List<ErrorWithPath> errorMessage)
         {
+            
             RuntimeValidationError?.Invoke(errorMessage);
         }
 
+
         protected void InvokeValidationError(List<ErrorWithPath> errorMessage)
         {
-
             ValidationError?.Invoke(errorMessage);
         }
 
