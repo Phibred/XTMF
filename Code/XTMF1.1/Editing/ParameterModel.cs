@@ -31,6 +31,28 @@ namespace XTMF
 
         private readonly ModelSystemEditingSession _Session;
 
+        internal readonly ModelSystemStructureModel _belongsTo;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool IsDisabled
+        {
+            get
+            {
+                return _belongsTo.IsDisabled;
+            }
+        }
+
+        public  ModelSystemStructureModel BelongsToModel
+        {
+            get
+            {
+                return _belongsTo;
+            }
+        }
+ 
+
         public ParameterModel(ModuleParameter realParameter, ModelSystemEditingSession session)
         {
             IsDirty = false;
@@ -38,6 +60,18 @@ namespace XTMF
             _Session = session;
             _Value = _Value = RealParameter.Value != null ? RealParameter.Value.ToString() : string.Empty;
         }
+
+        public ParameterModel(ModuleParameter realParameter, ModelSystemEditingSession session, ModelSystemStructureModel belongsTo)
+        {
+            IsDirty = false;
+            RealParameter = realParameter;
+            _Session = session;
+            _Value = _Value = RealParameter.Value != null ? RealParameter.Value.ToString() : string.Empty;
+            _belongsTo = belongsTo;
+
+
+        }
+
 
         public event PropertyChangedEventHandler PropertyChanged;
 

@@ -36,12 +36,92 @@ namespace XTMF.Gui.Models
 
         private readonly bool _MultipleSelected;
 
+        public Visibility ModuledDisabledIconVisiblity
+        {
+            get
+            {
+                if (this._linkedParameterModel == null)
+                {
+                    var s = IsDisabledByDesdencence(RealParameter);
+                    var c = (s) ? Visibility.Visible : Visibility.Collapsed;
+                    return c;
+                }
+                else
+                {
+                    var parameters = this._linkedParameterModel.GetParameters();
+                    foreach (var s in parameters)
+                    {
+                        if (!IsDisabledByDesdencence(s))
+                        {
+                            return Visibility.Collapsed;
+                        }
+                    }
+                    return Visibility.Visible;
+                }
+            }
+
+        }
+
+        /// <summary>
+        /// Determines if this parameter is associated with a disabled module by descendence, that is, this method returns true
+        /// if the associated module or any of its ancestors are disabled.
+        /// </summary>
+        /// <param name="parameter"></param>
+        /// <returns></returns>
+        public static bool IsDisabledByDesdencence(ParameterModel parameter)
+        {
+            //in the case of the root module
+            if(parameter.BelongsToModel.Parent == null && parameter.IsDisabled)
+            {
+                return true;
+            }
+            else if(parameter.BelongsToModel.Parent == null && !parameter.IsDisabled)
+            {
+                return false;
+            }
+            bool hasDisabledParent = false;
+            ModelSystemStructureModel m = parameter.BelongsToModel;
+            do
+            {
+                if(m.IsDisabled)
+                {
+                    hasDisabledParent = true;
+                    break;
+                }
+                else
+                {
+                    //move up until null
+                    m = m.Parent;
+                }
+
+            } while (m != null);
+
+            return hasDisabledParent;
+        }
+
+        private LinkedParameterModel _linkedParameterModel;
+
         public ParameterDisplayModel(ParameterModel realParameter, bool multipleSelected = false)
         {
             RealParameter = realParameter;
             _MultipleSelected = multipleSelected;
             realParameter.PropertyChanged += RealParameter_PropertyChanged;
             FontColour = RealParameter.IsHidden ? Brushes.DarkGray : Brushes.White;
+
+
+            this._linkedParameterModel = realParameter.GetLinkedParameter();
+
+
+        }
+
+        public ParameterDisplayModel(ModelSystemStructureDisplayModel realParameter, bool multipleSelected = false)
+        {
+            //RealParameter = realParameter.BaseModel.;
+            _MultipleSelected = multipleSelected;
+            realParameter.PropertyChanged += RealParameter_PropertyChanged;
+            FontColour = RealParameter.IsHidden ? Brushes.DarkGray : Brushes.White;
+
+
         }
 
         private void RealParameter_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -51,7 +131,7 @@ namespace XTMF.Gui.Models
             {
                 property = nameof(LinkedParameterVisibility);
             }
-            else if(e.PropertyName == "IsHidden")
+            else if (e.PropertyName == "IsHidden")
             {
                 FontColour = RealParameter.IsHidden ? Brushes.DarkGray : Brushes.White;
                 property = nameof(FontColour);
@@ -142,7 +222,11 @@ namespace XTMF.Gui.Models
         internal static ObservableCollection<ParameterDisplayModel> CreateParameters(IOrderedEnumerable<ParameterModel> parameterModel, bool multipleSelected = false)
         {
             return new ObservableCollection<ParameterDisplayModel>(parameterModel.Select(p => new ParameterDisplayModel(p, multipleSelected)));
+
         }
+
+
+
 
         internal bool AddToLinkedParameter(LinkedParameterModel newLP, ref string error) => newLP.AddParameter(RealParameter, ref error);
 
@@ -168,6 +252,8 @@ namespace XTMF.Gui.Models
         public List<string> PossibleEnumerationValues => RealParameter.Type == typeof(bool) ? BoolValueList : RealParameter.Type.GetEnumNames().ToList();
 
         public IModelSystemStructure BelongsTo => RealParameter.BelongsTo;
+
+        public bool SetOnce = false;
     }
 
     public class ParameterTypeSelector : DataTemplateSelector
