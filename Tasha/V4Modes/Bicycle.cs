@@ -29,7 +29,7 @@ namespace Tasha.V4Modes
     /// </summary>
     [ModuleInformation(Description =
         @"This module is designed to implement the Bicycle mode for GTAModel V4.0+.")]
-    public sealed class Bicycle : ITashaMode, IIterationSensitive
+    public sealed class Bicycle : ITashaMode, IIterationSensitive, ITourDependentMode
     {
         [RootModule]
         public ITashaRuntime Root;
@@ -204,16 +204,16 @@ namespace Tasha.V4Modes
             GetPersonVariables(person, out float timeFactor, out float constant);
             v += constant;
             v += UtilityAugmentation?.GetValueFromFlat(time, _zoneSystem.GetFlatIndex(oZone.ZoneNumber), _zoneSystem.GetFlatIndex(dZone.ZoneNumber)) ?? 0.0f;
-            if(trip.OriginalZone == trip.DestinationZone)
+            if (trip.OriginalZone == trip.DestinationZone)
             {
                 v += IntrazonalConstant;
             }
             v += timeFactor * TravelTime(oZone, dZone, time).ToMinutes();
-            if(person.Youth)
+            if (person.Youth)
             {
                 v += YouthFlag;
             }
-            if(person.YoungAdult)
+            if (person.YoungAdult)
             {
                 v += YoungAdultFlag;
             }
@@ -222,9 +222,9 @@ namespace Tasha.V4Modes
 
         private void GetPersonVariables(ITashaPerson person, out float time, out float constant)
         {
-            if(person.EmploymentStatus == TTSEmploymentStatus.FullTime)
+            if (person.EmploymentStatus == TTSEmploymentStatus.FullTime)
             {
-                switch(person.Occupation)
+                switch (person.Occupation)
                 {
                     case Occupation.Professional:
                         constant = ProfessionalConstant;
@@ -244,7 +244,7 @@ namespace Tasha.V4Modes
                         return;
                 }
             }
-            switch(person.StudentStatus)
+            switch (person.StudentStatus)
             {
                 case StudentStatus.FullTime:
                 case StudentStatus.PartTime:
@@ -252,9 +252,9 @@ namespace Tasha.V4Modes
                     time = StudentTimeFactor;
                     return;
             }
-            if(person.EmploymentStatus == TTSEmploymentStatus.PartTime)
+            if (person.EmploymentStatus == TTSEmploymentStatus.PartTime)
             {
-                switch(person.Occupation)
+                switch (person.Occupation)
                 {
                     case Occupation.Professional:
                         constant = ProfessionalConstant;
@@ -290,7 +290,7 @@ namespace Tasha.V4Modes
         {
             float v = 0;
             v += Constant;
-            if(origin.ZoneNumber == destination.ZoneNumber)
+            if (origin.ZoneNumber == destination.ZoneNumber)
             {
                 v += IntrazonalConstant;
             }
@@ -337,16 +337,16 @@ namespace Tasha.V4Modes
             bool lastMadeWithBike = true;
             bool firstWasBike = trips[0].Mode == this;
             bool anyBike = false;
-            for(int i = 0; i < trips.Count; i++)
+            for (int i = 0; i < trips.Count; i++)
             {
                 var trip = trips[i];
-                if(trip.Mode == this)
+                if (trip.Mode == this)
                 {
                     var oZone = trip.OriginalZone;
                     if (oZone != lastPlace)
                     {
                         // See if this could be a bike-share trip
-                        if(BikeShareZones.Contains(oZone.ZoneNumber) && BikeShareZones.Contains(trip.DestinationZone.ZoneNumber))
+                        if (BikeShareZones.Contains(oZone.ZoneNumber) && BikeShareZones.Contains(trip.DestinationZone.ZoneNumber))
                         {
                             lastMadeWithBike = false;
                             continue;
@@ -409,6 +409,48 @@ namespace Tasha.V4Modes
             double distance = origin == destination ? origin.InternalDistance : Root.ZoneSystem.Distances[origin.ZoneNumber, destination.ZoneNumber];
             Time ret = Time.FromMinutes((float)(distance / AvgTravelSpeed));
             return ret;
+        }
+
+        [RunParameter("BikeShare Constant", 0f, "A constant applied to a tour that requires a bike share.")]
+        public float BikeShareConstant;
+
+        public bool CalculateTourDependentUtility(ITripChain chain, int tripIndex, out float dependentUtility, out Action<ITripChain> onSelection)
+        {
+            onSelection = null;
+            if (BikeShareZones.Count > 0)
+            {
+                var trips = chain.Trips;
+                // if this trip is a possible bike share trip
+                if (BikeShareZones.Contains(trips[tripIndex].OriginalZone.ZoneNumber) &&
+                    BikeShareZones.Contains(trips[tripIndex].DestinationZone.ZoneNumber))
+                {
+                    // Replicate the tour logic to see if
+                    var lastPlace = trips[0].OriginalZone;
+                    var homeZone = lastPlace;
+                    bool firstWasBike = trips[0].Mode == this;
+                    for (int i = 0; i < trips.Count; i++)
+                    {
+                        var trip = trips[i];
+                        if (trip.Mode == this)
+                        {
+                            var oZone = trip.OriginalZone;
+                            if (oZone != lastPlace)
+                            {
+                                // See if this could be a bike-share trip
+                                if (BikeShareZones.Contains(oZone.ZoneNumber) && BikeShareZones.Contains(trip.DestinationZone.ZoneNumber))
+                                {
+                                    // only apply the constant if the first ride share trip is this one
+                                    dependentUtility = i == tripIndex ? BikeShareConstant : 0f;
+                                    return true;
+                                }
+                            }
+                            lastPlace = trip.DestinationZone;
+                        }
+                    }
+                }
+            }
+            dependentUtility = 0f;
+            return true;
         }
     }
 }
