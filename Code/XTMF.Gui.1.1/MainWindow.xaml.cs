@@ -573,10 +573,7 @@ namespace XTMF.Gui
             }
         }
 
-        private void OpenModelSystem_Click(object sender, RoutedEventArgs e)
-        {
-            OpenModelSystem();
-        }
+
 
         public void OpenModelSystem()
         {
@@ -1313,7 +1310,7 @@ namespace XTMF.Gui
         /// <param name="e"></param>
         private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (DrawerHost.IsLeftDrawerOpen)
+            if (DrawerHost.IsLeftDrawerOpen && e.Key != Key.LeftAlt || e.Key != Key.RightAlt)
             {
                 DrawerHost.IsLeftDrawerOpen = false;
 
@@ -1420,6 +1417,11 @@ namespace XTMF.Gui
 
 
             return isFound;
+        }
+
+        private void OpenModelSystemGlobalMenuItem_Selected(object sender, MouseButtonEventArgs e)
+        {
+
         }
     }
 }

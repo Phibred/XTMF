@@ -27,6 +27,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shell;
 using System.Windows.Threading;
 using MaterialDesignThemes.Wpf;
@@ -156,7 +157,7 @@ namespace XTMF.Gui.UserControls
             ErrorGroupBox.Visibility = Visibility.Collapsed;
             BaseGrid.RowDefinitions[1].Height = new GridLength(0);
             _runDirectory = Run.RunDirectory;
-            _timer = new DispatcherTimer {Interval = TimeSpan.FromMilliseconds(33)};
+            _timer = new DispatcherTimer {Interval = TimeSpan.FromMilliseconds(100)};
             _isFinished = false;
             _wasCanceled = false;
             _timer.Tick += Timer_Tick;
@@ -176,6 +177,7 @@ namespace XTMF.Gui.UserControls
             ConsoleBorder.DataContext = ConsoleOutput.DataContext;
 
             session.ExecuteRun(run, immediateRun);
+            Timeline.DesiredFrameRateProperty.OverrideMetadata(typeof(Timeline), new FrameworkPropertyMetadata { DefaultValue = 30 });
 
             StartRunAsync();
             _timer.Start();
@@ -267,12 +269,21 @@ namespace XTMF.Gui.UserControls
             var newTextLength = ConsoleOutput.Text.Length;
             if (_oldCaret >= _consoleLength)
             {
-                ConsoleScrollViewer.ScrollToEnd();
-                ConsoleOutput.CaretIndex = newTextLength;
+                //ConsoleScrollViewer.ScrollToEnd();
+                ConsoleOutput.Select(ConsoleOutput.Text.Length - 1, 0);
+                //ConsoleOutput.S
+                //ConsoleOutput.ScrollToLine(ConsoleOutput.LineCount-1);
+                //ConsoleScrollViewer.ScrollToBottom();
             }
             else
             {
-                ConsoleOutput.CaretIndex = _oldCaret;
+                //will scroll to bottom if caret is close to end of text
+               // if (ConsoleOutput.CaretIndex > ConsoleOutput.Text.Length - 20)
+                //{
+                    ConsoleOutput.Select(ConsoleOutput.Text.Length - 1, 0);
+                //}
+
+                // ConsoleOutput.CaretIndex = _oldCaret;
             }
 
             _consoleLength = newTextLength;
@@ -817,6 +828,7 @@ namespace XTMF.Gui.UserControls
 
             private void Run_RunMessage(string message)
             {
+            
                 ConsoleOutput = ConsoleOutput + message + "\r\n";
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ConsoleOutput)));
             }
