@@ -351,9 +351,9 @@ namespace XTMF
             }
             else
             {
-                if (!HasFolderWritePermission(dir))
+                if (!HasFolderWritePermission(dir, ref error))
                 {
-                    error = "Unable to use directory " + dir + ". Access was denied!";
+                    error = error + "\r\n" + "Unable to use directory " + dir + ". Access was denied!";
                     return false;
                 }
             }
@@ -367,7 +367,7 @@ namespace XTMF
         /// <param name="destDir">The directory to write to.</param>
         /// <returns>True if the user has write access</returns>
         /// <see cref="http://stackoverflow.com/questions/1410127/c-sharp-test-if-user-has-write-access-to-a-folder"/>
-        public static bool HasFolderWritePermission(string destDir)
+        public static bool HasFolderWritePermission(string destDir, ref string error)
         {
             if (string.IsNullOrEmpty(destDir) || !Directory.Exists(destDir)) return false;
             try
@@ -408,8 +408,14 @@ namespace XTMF
                 }
                 return ret;
             }
-            catch
+            catch (PlatformNotSupportedException)
             {
+                // If we can not test for security just accept it.
+                return true;
+            }
+            catch (Exception e)
+            {
+                error = e.Message;
                 return false;
             }
         }
@@ -428,7 +434,7 @@ namespace XTMF
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    error = "Unable to create directory " + dir + ". Access was denied!";
+                    error = error + "\r\n" + "Unable to create directory " + dir + ". Access was denied!";
                     return false;
                 }
                 catch (IOException)
@@ -439,9 +445,9 @@ namespace XTMF
             }
             else
             {
-                if (!HasFolderWritePermission(dir))
+                if (!HasFolderWritePermission(dir, ref error))
                 {
-                    error = "Unable to use directory " + dir + ". Access was denied!";
+                    error = error ?? "Unable to use directory " + dir + ". Access was denied!";
                     return false;
                 }
             }
@@ -802,6 +808,8 @@ namespace XTMF
                                 string error = null;
                                 if (!SetProjectDirectory(dir, ref error))
                                 {
+                                    Console.WriteLine("Error when loading project directory!");
+                                    Console.WriteLine(error);
                                     LoadError = error;
                                     LoadErrorTerminal = true;
                                 }

@@ -52,6 +52,8 @@ namespace XTMF.Run
             string modelSystemName = args[1];
             string runName = args[2];
             var runtime = new XTMFRuntime();
+            Console.WriteLine("Configuration Directory: " + runtime.Configuration.ConfigurationDirectory);
+            Console.WriteLine("Project Directory      : " + runtime.Configuration.ProjectDirectory);
             string error = null;
             Project project;
             if ((project = runtime.ProjectController.Load(projectName, ref error)) == null)
