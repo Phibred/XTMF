@@ -477,15 +477,13 @@ namespace TMG.Emme
                         BinaryWriter writer = new BinaryWriter(_pipeToEMME);
                         writer.Write(SignalTermination);
                         writer.Flush();
-                        ToEmme.Flush();
-                        // after our message has been sent then we can go and kill the stream
-                        ToEmme.Close();
-                        ToEmme = null;
+                        writer.Flush();
                     }
                     // Argument exception occurs if the stream is not writable
                     catch (ArgumentException) { }
                     catch (IOException) { }
-                    _pipeToEMME.Dispose();
+                    // after our message has been sent then we can go and kill the stream
+                    _pipeToEMME?.Dispose();
                     _pipeToEMME = null;
                 }
             }
