@@ -82,6 +82,12 @@ class WriteMessageQueue(Thread):
                 msg = self.WriteQueue.get()
                 self.WriteQueue.task_done()
                 if msg is not None:
+                    if len(msg) == 3:
+                        if msg[2].typecode == 'c':
+                            self.Bridge.WriteToConsole("About to write through bridge: iSize->" + str(msg[0].itemsize))
+                            self.Bridge.WriteToConsole("About to write through bridge: " + str(msg[2]))
+                            self.Bridge.WriteToConsole("About to write through bridge: len -> " + str(msg[1]))
+                            pass
                     for subMessage in msg:
                         subMessage.tofile(self.ToXTMF)
                 else:
@@ -188,7 +194,6 @@ class XTMFBridge:
             return stringArray.tostring()
     
     def ReadInt(self):
-        intArray = array.array('l')
         val = struct.unpack('i', self.FromXTMF.read(4))[0]
         return val 
     
@@ -316,29 +321,7 @@ class XTMFBridge:
         return string
     
     def SendString(self, stringToSend):
-        length = len(stringToSend)
-        tempLength = length
-        bytes = 0
-        #figure out how many bytes we are going to need to store the length
-        #string
-        while tempLength > 0:
-            tempLength = tempLength >> 7
-            bytes += 1
-        lengthArray = array.array('B')
-        if length <= 0:
-            lengthArray.append(0)
-        else:
-            tempLength = length
-            for i in range(bytes):
-                current = int(tempLength >> 7)
-                current = int(current << 7)
-                diff = tempLength - current
-                if tempLength < 128:
-                    lengthArray.append(diff)
-                else:
-                    lengthArray.append(diff + 128)
-                tempLength = tempLength >> 7
-        return [lengthArray, array.array('c', str(stringToSend))]
+        return [array.array('i', [len(stringToSend)]), array.array('c', str(stringToSend))]
 
     def SendStartSignal(self):
         self.WriteQueue.add_message(self.SendSignal(self.SignalStart))
@@ -365,13 +348,14 @@ class XTMFBridge:
         return
     
     def SendReturnSuccess(self, returnValue):
+        self.WriteToConsole("About to send success with parameter: " + str(returnValue))
         self.WriteQueue.add_message(\
             self.SendSignal(self.SignalRunCompleteWithParameter) \
         + self.SendString(str(returnValue)))
         return
     
     def SendSignal(self, signal):
-        intArray = array.array('l')
+        intArray = array.array('i')
         intArray.append(signal)
         return [intArray]
     
@@ -607,6 +591,7 @@ class XTMFBridge:
         ns = self.ReadString()
         ret = ns in self.Modeller.tool_namespaces()
         if ret == False:
+            self.WriteToConsole("Unable to find a tool named " + ns)
             _m.logbook_write("Unable to find a tool named " + ns)
         self.SendReturnSuccess(ret)
         return

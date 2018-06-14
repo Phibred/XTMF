@@ -22,6 +22,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using XTMF;
 
 namespace TMG.Emme
@@ -125,7 +126,7 @@ namespace TMG.Emme
             {
                 throw new XTMFRuntimeException(module, "Please make sure that EMMEPATH is on the system environment variables!");
             }
-            string pythonDirectory = Path.Combine(emmePath, FindPython(module, emmePath));
+            string pythonDirectory = Path.Combine(emmePath, FindPythonDirectory(module, emmePath));
             string pythonPath = Path.Combine(pythonDirectory, @"python.exe");
             if(!File.Exists(pythonPath))
             {
@@ -269,6 +270,22 @@ namespace TMG.Emme
             }
         }
 
+        private string ReadString(IModule module, BinaryReader reader)
+        {
+            var length = reader.ReadInt32();
+            if(length < 0)
+            {
+                throw new XTMFRuntimeException(module, "Received a negative length for a string coming across the bridge!");
+            }
+            char[] ret = new char[length];
+            int pos = 0;
+            while(pos < length)
+            {
+                pos += reader.Read(ret, pos, length - pos);
+            }
+            return new string(ret);
+        }
+
         private bool WaitForEmmeResponse(IModule module, ref string returnValue, Action<float> updateProgress)
         {
             // now we need to wait
@@ -284,36 +301,45 @@ namespace TMG.Emme
                     {
                         case SignalStart:
                             {
+                                Console.WriteLine("Start received!");
                                 continue;
                             }
                         case SignalRunComplete:
                             {
+                                Console.WriteLine("Received tool complete!");
                                 return true;
                             }
                         case SignalRunCompleteWithParameter:
                             {
-                                returnValue = reader.ReadString();
+                                Console.WriteLine("Received tool complete with parameter!");
+                                returnValue = ReadString(module, reader);
+                                Console.WriteLine("Return Value : " + returnValue);
+                                Console.WriteLine("Return Length: " + returnValue.Length);
                                 return true;
                             }
                         case SignalTermination:
                             {
+                                Console.WriteLine("EMMEBridge terminated!");
                                 throw new XTMFRuntimeException(module, "The EMME ModellerBridge panicked and unexpectedly shutdown.");
                             }
                         case SignalParameterError:
                             {
-                                throw new EmmeToolParameterException(module, "EMME Parameter Error: " + reader.ReadString());
+                                Console.WriteLine("Parameter error!");
+                                throw new EmmeToolParameterException(module, "EMME Parameter Error: " + ReadString(module, reader));
                             }
                         case SignalRuntimeError:
                             {
-                                throw new EmmeToolRuntimeException(module, "EMME Runtime " + reader.ReadString());
+                                Console.WriteLine("Runtime Error!");
+                                throw new EmmeToolRuntimeException(module, "EMME Runtime " + ReadString(module, reader));
                             }
                         case SignalToolDoesNotExistError:
                             {
-                                throw new EmmeToolCouldNotBeFoundException(module, reader.ReadString());
+                                Console.WriteLine("Tool does not exist!");
+                                throw new EmmeToolCouldNotBeFoundException(module, ReadString(module, reader));
                             }
                         case SignalSentPrintMessage:
                             {
-                                toPrint = reader.ReadString();
+                                toPrint = ReadString(module, reader);
                                 Console.Write(toPrint);
                                 break;
                             }
@@ -325,6 +351,7 @@ namespace TMG.Emme
                             }
                         default:
                             {
+                                Console.WriteLine("An unknown message was passed back through the bridge!");
                                 throw new XTMFRuntimeException(module, "Unknown message passed back from the EMME ModellerBridge.  Signal number " + result);
                             }
                     }
@@ -477,7 +504,6 @@ namespace TMG.Emme
                         BinaryWriter writer = new BinaryWriter(_pipeToEMME);
                         writer.Write(SignalTermination);
                         writer.Flush();
-                        writer.Flush();
                     }
                     // Argument exception occurs if the stream is not writable
                     catch (ArgumentException) { }
@@ -489,7 +515,7 @@ namespace TMG.Emme
             }
         }
 
-        private string FindPython(IModule module, string emmePath)
+        private string FindPythonDirectory(IModule module, string emmePath)
         {
             if (!Directory.Exists(emmePath))
             {
