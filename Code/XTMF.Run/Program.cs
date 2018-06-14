@@ -54,6 +54,7 @@ namespace XTMF.Run
             var runtime = new XTMFRuntime();
             Console.WriteLine("Configuration Directory: " + runtime.Configuration.ConfigurationDirectory);
             Console.WriteLine("Project Directory      : " + runtime.Configuration.ProjectDirectory);
+            Console.WriteLine("What is going on?");
             string error = null;
             Project project;
             if ((project = runtime.ProjectController.Load(projectName, ref error)) == null)
@@ -68,6 +69,11 @@ namespace XTMF.Run
                 {
                     case 0:
                         Console.WriteLine("There was no model system in the project " + project.Name + " called " + modelSystemName + "!");
+                        Console.WriteLine("Available model systems:");
+                        foreach(var ms in projectSession.Project.ModelSystemStructure)
+                        {
+                            Console.WriteLine(ms.Name);
+                        }
                         return;
                     case 1:
                         Run(modelSystems[0].Index, projectSession, runName);
