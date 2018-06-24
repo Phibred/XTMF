@@ -231,25 +231,37 @@ namespace Tasha.PopulationSynthesis
                     return min;
                 }
 
+                [RunParameter("Taxibot Served Households", "", typeof(RangeSet), "Select the zone ranges that are serviced by taxibot.  They will be converted to worker category 3.")]
+                public RangeSet TaxibotServedHouseholds;
+
                 private int ClassifyHousehold(ITashaHousehold household)
                 {
-                    var numberOfLicenses = 0;
-                    var numberOfVehicles = household.Vehicles.Length;
-                    if (numberOfVehicles > 0)
+                    int category;
+                    int zoneNumber = household.HomeZone.ZoneNumber;
+                    if (TaxibotServedHouseholds.Contains(zoneNumber))
                     {
-                        var persons = household.Persons;
-                        for (int i = 0; i < persons.Length; i++)
+                        category = 2;
+                    }
+                    else
+                    {
+                        var numberOfLicenses = 0;
+                        var numberOfVehicles = household.Vehicles.Length;
+                        if (numberOfVehicles > 0)
                         {
-                            if (persons[i].Licence)
+                            var persons = household.Persons;
+                            for (int i = 0; i < persons.Length; i++)
                             {
-                                numberOfLicenses++;
+                                if (persons[i].Licence)
+                                {
+                                    numberOfLicenses++;
+                                }
                             }
                         }
+                        category = numberOfLicenses == 0 ? 0 : (numberOfVehicles < numberOfLicenses ? 1 : 2);
                     }
-                    int category = numberOfLicenses == 0 ? 0 : (numberOfVehicles < numberOfLicenses ? 1 : 2);
                     if (SaveWorkerCategory != null)
                     {
-                        RecordHouseholdCategory(category, household.HomeZone.ZoneNumber, household.ExpansionFactor);
+                        RecordHouseholdCategory(category, zoneNumber, household.ExpansionFactor);
                     }
                     return category;
                 }
