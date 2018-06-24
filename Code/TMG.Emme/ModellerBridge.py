@@ -82,20 +82,12 @@ class WriteMessageQueue(Thread):
                 msg = self.WriteQueue.get()
                 self.WriteQueue.task_done()
                 if msg is not None:
-                    if len(msg) == 3:
-                        if msg[2].typecode == 'c':
-                            self.Bridge.WriteToConsole("About to write through bridge: iSize->" + str(msg[0].itemsize))
-                            self.Bridge.WriteToConsole("About to write through bridge: " + str(msg[2]))
-                            self.Bridge.WriteToConsole("About to write through bridge: len -> " + str(msg[1]))
-                            pass
                     for subMessage in msg:
                         subMessage.tofile(self.ToXTMF)
                 else:
-                    self.Bridge.WriteToConsole("Exiting writer from a None!")
                     return
         except:
             self.Bridge.WriteToConsole("We had an exception while writing!")
-        self.Bridge.WriteToConsole("Exiting writer!")
         return
 
     def add_message(self, msg):
@@ -155,9 +147,7 @@ class XTMFBridge:
         self.CachedLogbookWrite = _m.logbook_write
         self.CachedLogbookTrace = _m.logbook_trace
         self.previous_level = None
-        print "Building connections to XTMF"
         self.FromXTMF = open(pipeOut, 'rb', 0)
-        print "Finished building connections to XTMF"
         self._oldstdout = sys.stdout
         sys.stdout = RedirectToXTMFConsole(self)
         self.WriteQueue = WriteMessageQueue(self, pipeIn);
@@ -348,7 +338,6 @@ class XTMFBridge:
         return
     
     def SendReturnSuccess(self, returnValue):
-        self.WriteToConsole("About to send success with parameter: " + str(returnValue))
         self.WriteQueue.add_message(\
             self.SendSignal(self.SignalRunCompleteWithParameter) \
         + self.SendString(str(returnValue)))
@@ -551,9 +540,7 @@ class XTMFBridge:
         self.SendStartSignal()
         try:
             while(not self._exit):
-                self.WriteToConsole("Waiting for input from XTMF")
                 input = self.ReadInt()
-                self.WriteToConsole("Message from C#: " + str(input))
                 if input == self.SignalTermination:
                     _m.logbook_write("Exiting on termination signal from XTMF")
                     self._exit = True
@@ -584,7 +571,11 @@ class XTMFBridge:
                     self.SendSignal(self.SignalTermination)
         finally:
             sys.stdout = self._oldstdout
+            print "Closing the EMME application"
+            emmeApplication.close()
+            print "After closing the EMME application"
             self.WriteQueue.kill()
+
         return
 
     def CheckToolExists(self):
@@ -625,14 +616,11 @@ if len(args) > 6:
 #sys.stderr.write(args)
 print userInitials
 print projectFile
+TheEmmeEnvironmentXMTF = None
 try:
-    print "Creating EMME app"
     print "Trying to load project from: " + projectFile
     TheEmmeEnvironmentXMTF = _app.start_dedicated(visible=False, user_initials=userInitials, project=projectFile)
-    print "Finished creating EMME app"
-    print "Starting EMMEBridge"
     XTMFBridge().Run(TheEmmeEnvironmentXMTF, databank, performancFlag)
-    TheEmmeEnvironmentXMTF.close()
 except Exception as e:
     print dir(e).__class__
     print e.message

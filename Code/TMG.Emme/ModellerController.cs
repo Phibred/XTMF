@@ -150,7 +150,6 @@ namespace TMG.Emme
             ProcessStartInfo startInfo;
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
-                Console.WriteLine("Using the Windows Pipeline");
                 string pinLocal = Guid.NewGuid().ToString();
                 string poutLocal = Guid.NewGuid().ToString();
                 _pipeFromEMME = new NamedPipeServerStream(pinLocal, PipeDirection.In);
@@ -169,7 +168,6 @@ namespace TMG.Emme
             }
             else
             {
-                Console.WriteLine("Using Linux Pipeline");
                 var pipeIn = Path.Combine(Environment.CurrentDirectory, Guid.NewGuid().ToString());
                 var pipeOut = Path.Combine(Environment.CurrentDirectory, Guid.NewGuid().ToString());
                 _pipeFromEMME = new NamedPipeServerStream(pipeIn, PipeDirection.In);
@@ -292,7 +290,6 @@ namespace TMG.Emme
             try
             {
                 string toPrint;
-                //Console.WriteLine("Starting to wait for a response");
                 while (true)
                 {
                     BinaryReader reader = new BinaryReader(_pipeFromEMME, Encoding.UTF8, true);
@@ -301,40 +298,31 @@ namespace TMG.Emme
                     {
                         case SignalStart:
                             {
-                                Console.WriteLine("Start received!");
                                 continue;
                             }
                         case SignalRunComplete:
                             {
-                                Console.WriteLine("Received tool complete!");
                                 return true;
                             }
                         case SignalRunCompleteWithParameter:
                             {
-                                Console.WriteLine("Received tool complete with parameter!");
                                 returnValue = ReadString(module, reader);
-                                Console.WriteLine("Return Value : " + returnValue);
-                                Console.WriteLine("Return Length: " + returnValue.Length);
                                 return true;
                             }
                         case SignalTermination:
                             {
-                                Console.WriteLine("EMMEBridge terminated!");
                                 throw new XTMFRuntimeException(module, "The EMME ModellerBridge panicked and unexpectedly shutdown.");
                             }
                         case SignalParameterError:
                             {
-                                Console.WriteLine("Parameter error!");
                                 throw new EmmeToolParameterException(module, "EMME Parameter Error: " + ReadString(module, reader));
                             }
                         case SignalRuntimeError:
                             {
-                                Console.WriteLine("Runtime Error!");
                                 throw new EmmeToolRuntimeException(module, "EMME Runtime " + ReadString(module, reader));
                             }
                         case SignalToolDoesNotExistError:
                             {
-                                Console.WriteLine("Tool does not exist!");
                                 throw new EmmeToolCouldNotBeFoundException(module, ReadString(module, reader));
                             }
                         case SignalSentPrintMessage:
