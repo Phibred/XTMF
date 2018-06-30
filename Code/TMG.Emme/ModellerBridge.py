@@ -537,6 +537,9 @@ class XTMFBridge:
         if performanceMode:
             _m.logbook_write("Performance Testing Activated")
         # tell XTMF that we are ready
+        #Check to see if we have a beta version of EMME and if so force the compatibility tests to always pass.
+        if emmeApplication.version_info[0] <= 2:
+            emmeApplication.version_info = (9,9,9,0)
         self.SendStartSignal()
         try:
             while(not self._exit):
