@@ -82,6 +82,7 @@ class WriteMessageQueue(Thread):
                 msg = self.WriteQueue.get()
                 self.WriteQueue.task_done()
                 if msg is not None:
+                    #self.Bridge.WriteToConsole(str(msg))
                     for subMessage in msg:
                         subMessage.tofile(self.ToXTMF)
                 else:
@@ -538,8 +539,6 @@ class XTMFBridge:
             _m.logbook_write("Performance Testing Activated")
         # tell XTMF that we are ready
         #Check to see if we have a beta version of EMME and if so force the compatibility tests to always pass.
-        if emmeApplication.version_info[0] <= 2:
-            emmeApplication.version_info = (9,9,9,0)
         self.SendStartSignal()
         try:
             while(not self._exit):
@@ -625,6 +624,7 @@ try:
     TheEmmeEnvironmentXMTF = _app.start_dedicated(visible=False, user_initials=userInitials, project=projectFile)
     XTMFBridge().Run(TheEmmeEnvironmentXMTF, databank, performancFlag)
 except Exception as e:
+    print "Starting to write out error:"
     print dir(e).__class__
     print e.message
     print e.args

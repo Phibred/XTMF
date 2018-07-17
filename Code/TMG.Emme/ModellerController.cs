@@ -195,7 +195,7 @@ namespace TMG.Emme
             }
             catch (Exception e)
             {
-                throw new XTMFRuntimeException(module, "Unable to create a bridge to EMME to " + AddQuotes(projectFile) + "!\r\n" + e.Message);
+                throw new XTMFRuntimeException(module, "Unable to create a bridge to EMME to " + AddQuotes(projectFile) + "!\r\n" + e.Message + "\r\n" + e.StackTrace);
             }
             _pipeFromEMME.WaitForConnection();
             _pipeToEMME.WaitForConnection();

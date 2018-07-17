@@ -54,7 +54,6 @@ namespace XTMF.Run
             var runtime = new XTMFRuntime();
             Console.WriteLine("Configuration Directory: " + runtime.Configuration.ConfigurationDirectory);
             Console.WriteLine("Project Directory      : " + runtime.Configuration.ProjectDirectory);
-            Console.WriteLine("What is going on?");
             string error = null;
             Project project;
             if ((project = runtime.ProjectController.Load(projectName, ref error)) == null)
@@ -70,7 +69,7 @@ namespace XTMF.Run
                     case 0:
                         Console.WriteLine("There was no model system in the project " + project.Name + " called " + modelSystemName + "!");
                         Console.WriteLine("Available model systems:");
-                        foreach(var ms in projectSession.Project.ModelSystemStructure)
+                        foreach (var ms in projectSession.Project.ModelSystemStructure)
                         {
                             Console.WriteLine(ms.Name);
                         }
@@ -204,7 +203,7 @@ namespace XTMF.Run
                 };
                 run.RuntimeValidationError += (message) =>
                 {
-              
+
                     WriteMessageToStream(messageQueue, (writer) =>
                     {
                         writer.Write((Int32)ToHost.ClientErrorRuntimeValidation);
@@ -383,9 +382,32 @@ namespace XTMF.Run
                     Console.WriteLine("Unable to run \r\n" + error);
                     return;
                 }
-                modelSystemSession.ExecuteRun(run,true);
                 run.RunCompleted += Run_RunComplete;
+                run.ValidationError += Run_ValidationError;
+                run.RuntimeValidationError += Run_ValidationError;
+                run.RuntimeError += Run_RuntimeError;
+                modelSystemSession.ExecuteRun(run, true);
                 run.Wait();
+            }
+        }
+
+        private static void Run_RuntimeError(ErrorWithPath obj)
+        {
+            Console.WriteLine(obj.Message);
+        }
+
+        private static void Run_ValidationError(List<ErrorWithPath> obj)
+        {
+            if (obj == null)
+            {
+                Console.WriteLine("Undefined Validation Error");
+            }
+            else
+            {
+                foreach (var ewp in obj)
+                {
+                    Console.WriteLine(ewp.Message);
+                }
             }
         }
 
