@@ -177,6 +177,8 @@ class XTMFBridge:
         
     def ReadString(self):
         length = self.ReadLEB()
+        if length == 0:
+            return ""
         try:
             stringArray = array.array('c')
             stringArray.fromfile(self.FromXTMF, length)
