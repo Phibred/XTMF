@@ -220,6 +220,12 @@ namespace Tasha.V4Modes
             set;
         }
 
+        [RunParameter("Curbside Price", 0.0f, "The cost of pickup/dropoff for the Curbside Zones.")]
+        public float CurbsidePrice;
+
+        [RunParameter("Curbside Zones", "13,27", typeof(RangeSet), "The zones that are allowed to use this mode.")]
+        public RangeSet CurbsideZones;
+
         public bool CalculateV(ITrip driverOriginalTrip, ITrip passengerTrip, out float v)
         {
             return FastAutoData != null ? FastCalcV(driverOriginalTrip, passengerTrip, out v) : NonFastCalcV(driverOriginalTrip, passengerTrip, out v);
@@ -252,11 +258,16 @@ namespace Tasha.V4Modes
             var passenger = passengerTrip.TripChain.Person;
             // we are going to add in the time of the to passenger destination twice
             int same = 0;
+            var curbCost = 0.0f;
             // from driver's origin to passenger's origin
             if(toPassengerOrigin <= 0.0f)
             {
                 v += ZoneDistances[driverOrigin][passengerOrigin] * 0.001f * IntrazonalDriverTripDistanceFactor;
                 same++;
+            }
+            else if (CurbsideZones.Contains(passengerTrip.OriginalZone.ZoneNumber))
+            {
+                curbCost += CurbsidePrice;
             }
             //from passenger origin to passenger destination
             if(toPassengerDestination <= 0.0f)
@@ -269,6 +280,10 @@ namespace Tasha.V4Modes
             {
                 v += ZoneDistances[passengerDestination][driverDestination] * 0.001f * IntrazonalDriverTripDistanceFactor;
                 same++;
+            }
+            else if(CurbsideZones.Contains(passengerTrip.DestinationZone.ZoneNumber))
+            {
+                curbCost += CurbsidePrice;
             }
 
             GetPersonVariables(passenger, out float timeFactor, out float passengerConstant, out float costFactor);
@@ -286,7 +301,7 @@ namespace Tasha.V4Modes
                 + autoData[CalculateBaseIndex(passengerOrigin, passengerDestination, numberOfZones) + 1]
                 + autoData[CalculateBaseIndex(passengerDestination, driverDestination, numberOfZones) + 1])
                 + driverDestinationZone.ParkingCost * Math.Min(MaximumHoursForParking, TimeToNextTrip(driverOriginalTrip))
-                ) * costFactor;
+                + curbCost) * costFactor;
             switch(passengerTrip.Purpose)
             {
                 case Activity.School:
@@ -340,15 +355,20 @@ namespace Tasha.V4Modes
             // we are going to add in the time of the to passenger destination twice
             var zeroTime = Time.Zero;
             int same = 0;
+            var curbCost = 0.0f;
             // from driver's origin to passenger's origin
-            if(toPassengerOrigin == zeroTime)
+            if (toPassengerOrigin == zeroTime)
             {
                 v += zoneDistances[driverOrigin.ZoneNumber,
                     passengerOrigin.ZoneNumber] * 0.001f * IntrazonalDriverTripDistanceFactor;
                 same++;
             }
+            else if (CurbsideZones.Contains(passengerTrip.OriginalZone.ZoneNumber))
+            {
+                curbCost += CurbsidePrice;
+            }
             //from passenger origin to passenger destination
-            if(toPassengerDestination == zeroTime)
+            if (toPassengerDestination == zeroTime)
             {
                 v += zoneDistances[passengerOrigin.ZoneNumber,
                     passengerDestination.ZoneNumber] * 0.001f * IntrazonalPassengerTripDistanceFactor;
@@ -360,6 +380,10 @@ namespace Tasha.V4Modes
                 v += zoneDistances[passengerDestination.ZoneNumber,
                     driverOriginalTrip.DestinationZone.ZoneNumber] * 0.001f * IntrazonalDriverTripDistanceFactor;
                 same++;
+            }
+            else if (CurbsideZones.Contains(passengerTrip.DestinationZone.ZoneNumber))
+            {
+                curbCost += CurbsidePrice;
             }
 
             GetPersonVariables(passenger, out float timeFactor, out float passengerConstant, out float costFactor);
@@ -377,7 +401,7 @@ namespace Tasha.V4Modes
                 + AutoData.TravelCost(passengerOrigin, passengerDestination, passengerTrip.ActivityStartTime)
                 + AutoData.TravelCost(passengerDestination, driverOriginalTrip.DestinationZone, passengerTrip.ActivityStartTime))
                 + driverOriginalTrip.DestinationZone.ParkingCost * Math.Min(MaximumHoursForParking, TimeToNextTrip(driverOriginalTrip))
-                ) * costFactor;
+                + curbCost) * costFactor;
             switch(passengerTrip.Purpose)
             {
                 case Activity.School:

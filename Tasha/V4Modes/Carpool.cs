@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with XTMF.  If not, see <http://www.gnu.org/licenses/>.
 */
+using Datastructure;
 using System;
 using System.Collections.Generic;
 using Tasha.Common;
@@ -140,6 +141,12 @@ namespace Tasha.V4Modes
         [SubModelInformation(Description = "Constants for time of day")]
         public TimePeriodSpatialConstant[] TimePeriodConstants;
 
+        [RunParameter("Curbside Price", 0.0f, "The cost of pickup/dropoff for the Curbside Zones.")]
+        public float CurbsidePrice;
+
+        [RunParameter("Curbside Zones", "13,27", typeof(RangeSet), "The zones that are allowed to use this mode.")]
+        public RangeSet CurbsideZones;
+
         public double CalculateV(ITrip trip)
         {
             // compute the non human factors
@@ -153,17 +160,27 @@ namespace Tasha.V4Modes
             GetPersonVariables(p, out float timeFactor, out float constant, out float costFactor);
             float v = constant;
             var startTime = trip.TripStartTime;
+            var curbCost = 0.0f;
+            if (CurbsideZones.Contains(trip.OriginalZone.ZoneNumber))
+            {
+                curbCost += CurbsidePrice;
+            }
+            if (CurbsideZones.Contains(trip.DestinationZone.ZoneNumber))
+            {
+                curbCost += CurbsidePrice;
+            }
             // if Intrazonal
-            if(o == d)
+            if (o == d)
             {
                 v += IntrazonalConstant;
                 v += IntrazonalTripDistanceFactor * zoneSystem.Distances.GetFlatData()[o][d] * 0.001f;
+                v += costFactor * curbCost;
             }
             else
             {
                 Network.GetAllData(o, d, startTime, out float aivtt, out float cost);
-                v += timeFactor * aivtt + costFactor * cost;
-                if(originalZone.RegionNumber == destinationZone.RegionNumber)
+                v += timeFactor * aivtt + costFactor * (cost + curbCost);
+                if (originalZone.RegionNumber == destinationZone.RegionNumber)
                 {
                     v += IntraRegionalFlag;
                 }
