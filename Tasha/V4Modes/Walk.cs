@@ -99,6 +99,9 @@ namespace Tasha.V4Modes
         [SubModelInformation(Required = false, Description = "Augments for utility by time period, zone to zone.")]
         public TimePeriodMatrix UtilityAugmentation;
 
+        [RunParameter("Disable NoVehicleFlag HomeZones", "", typeof(RangeSet), "The zones to disable the NoVehicleFlag for.")]
+        public RangeSet DisableNoVehicleFlag;
+
         private float AvgWalkSpeed;
 
         [Parameter( "Demographic Category Feasible", 1f, "(Automated by IModeParameterDatabase)\r\nIs the currently processing demographic category feasible?" )]
@@ -187,9 +190,13 @@ namespace Tasha.V4Modes
             }
 
             //if no vehicles
-            if ( person.Household.Vehicles.Length == 0 )
+            var household = person.Household;
+            if ( household.Vehicles.Length == 0 )
             {
-                v += NoVehicleFlag;
+                if (!DisableNoVehicleFlag.Contains(household.HomeZone.ZoneNumber))
+                {
+                    v += NoVehicleFlag;
+                }
             }
             switch ( trip.Purpose )
             {
