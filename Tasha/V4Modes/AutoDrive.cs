@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with XTMF.  If not, see <http://www.gnu.org/licenses/>.
 */
+using Datastructure;
 using System;
 using System.Collections.Generic;
 using Tasha.Common;
@@ -149,6 +150,9 @@ namespace Tasha.V4Modes
         [RunParameter("Variance Scale", 1.0, "The factor applied to the error term.")]
         public double VarianceScale { get; set; }
 
+        [RunParameter("No Maximum Parking Hours", "", typeof(RangeSet), "A range set of zones that will ignore the maximum number of hours when charging for parking.")]
+        public RangeSet NoMaximumParkingHours;
+
         public double CalculateV(ITrip trip)
         {
             // compute the non human factors
@@ -168,7 +172,7 @@ namespace Tasha.V4Modes
             }
             else
             {
-                var parkingCosts = zoneArray.GetFlatData()[d].ParkingCost * Math.Min(MaximumHoursForParking, TimeToNextTrip(trip));
+                var parkingCosts = zoneArray.GetFlatData()[d].ParkingCost * (NoMaximumParkingHours.Contains(trip.DestinationZone.ZoneNumber) ? TimeToNextTrip(trip) : Math.Min(MaximumHoursForParking, TimeToNextTrip(trip)));
                 Network.GetAllData(o, d, trip.TripStartTime, out float ivtt, out float cost);
                 v += timeFactor * ivtt + costParameter * (cost + parkingCosts);
             }
