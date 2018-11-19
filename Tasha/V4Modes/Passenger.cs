@@ -226,9 +226,6 @@ namespace Tasha.V4Modes
         [RunParameter("Curbside Zones", "13,27", typeof(RangeSet), "The zones that are allowed to use this mode.")]
         public RangeSet CurbsideZones;
 
-        [RunParameter("No Maximum Parking Hours", "", typeof(RangeSet), "A range set of zones that will ignore the maximum number of hours when charging for parking.")]
-        public RangeSet NoMaximumParkingHours;
-
         public bool CalculateV(ITrip driverOriginalTrip, ITrip passengerTrip, out float v)
         {
             return FastAutoData != null ? FastCalcV(driverOriginalTrip, passengerTrip, out v) : NonFastCalcV(driverOriginalTrip, passengerTrip, out v);
@@ -303,7 +300,7 @@ namespace Tasha.V4Modes
                  (autoData[CalculateBaseIndex(driverOrigin, passengerOrigin, numberOfZones) + 1]
                 + autoData[CalculateBaseIndex(passengerOrigin, passengerDestination, numberOfZones) + 1]
                 + autoData[CalculateBaseIndex(passengerDestination, driverDestination, numberOfZones) + 1])
-                + driverDestinationZone.ParkingCost * (NoMaximumParkingHours.Contains(driverOriginalTrip.DestinationZone.ZoneNumber) ? TimeToNextTrip(driverOriginalTrip) : Math.Min(MaximumHoursForParking, TimeToNextTrip(driverOriginalTrip)))
+                + driverDestinationZone.ParkingCost * Math.Min(MaximumHoursForParking, TimeToNextTrip(driverOriginalTrip))
                 + curbCost) * costFactor;
             switch(passengerTrip.Purpose)
             {

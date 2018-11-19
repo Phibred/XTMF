@@ -22,7 +22,7 @@ using Tasha.Common;
 using TMG;
 using XTMF;
 
-namespace Tasha.V4Modes
+namespace Tasha.V4Modes.PerceivedTravelTimes
 {
     [ModuleInformation(Description =
         @"This module is designed to implement the AutoDrive mode for GTAModel V4.0+.")]
@@ -435,7 +435,6 @@ namespace Tasha.V4Modes
             StudentCost = ConvertCostFactor(StudentCostFactor, StudentTimeFactor);
             NonWorkerStudentCost = ConvertCostFactor(NonWorkerStudentCostFactor, NonWorkerStudentTimeFactor);
         }
-
         private float ConvertCostFactor(float costFactor, float timeFactor)
         {
             var ret = costFactor * timeFactor;
