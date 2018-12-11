@@ -85,6 +85,7 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
         public float NonWorkerStudentCostFactor;
 
         private ITripComponentData Network;
+        private ITripComponentData ZeroCostNetwork;
 
         [Parameter("Feasible", 1f, "Is the mode feasible?(1)")]
         public float CurrentlyFeasible { get; set; }
@@ -96,6 +97,12 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
 
         [RunParameter("Network Name", "Transit", "The name of the network to use for times.")]
         public string NetworkType { get; set; }
+
+        [RunParameter("Zero Cost Network", "", "The name for the network to use for residents or employees of the zero cost network.")]
+        public string ZeroCostNetworkName;
+
+        [RunParameter("Zero Cost Zones", "", typeof(RangeSet), "The zone numbers to apply the ZeroCostNetwork LoS for.")]
+        public RangeSet ZeroCostZones;
 
         [RunParameter("ToActivityDensityFactor", 0.0f, "The factor to apply to the destination of the activity's density.")]
         public float ToActivityDensityFactor;
@@ -136,7 +143,8 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
             var p = trip.TripChain.Person;
             GetPersonVariables(p, out float constant, out float perceivedTimeFactor, out float costFactor);
             float v = constant;
-            if (Network.GetAllData(o, d, trip.TripStartTime, out float ivtt, out float walk, out float wait, out float perceivedTime, out float cost))
+            ITripComponentData network = UseZeroCostNetwork(p) ? ZeroCostNetwork : Network;
+            if (network.GetAllData(o, d, trip.TripStartTime, out float ivtt, out float walk, out float wait, out float perceivedTime, out float cost))
             {
                 v += perceivedTime * perceivedTimeFactor
                     + cost * costFactor;
@@ -163,6 +171,13 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
             }
             v += GetPlanningDistrictConstant(trip.TripStartTime, originalZone.PlanningDistrict, destinationZone.PlanningDistrict);
             return v;
+        }
+
+        private bool UseZeroCostNetwork(ITashaPerson p)
+        {
+            var empZone = p.EmploymentZone?.ZoneNumber;
+            var homeZone = p.Household.HomeZone.ZoneNumber;
+            return ((empZone != null && ZeroCostZones.Contains((int)empZone)) || ZeroCostZones.Contains(homeZone));
         }
 
         private void GetPersonVariables(ITashaPerson person, out float constant, out float perceivedTime, out float cost)
@@ -285,10 +300,23 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
                 error = "There was no Auto Network loaded for the Transit Mode!";
                 return false;
             }
-            if (!AssignNetwork(networks))
+            if (!AssignNetwork(networks, NetworkType, ref Network))
             {
                 error = "We were unable to find the network data with the name \"" + NetworkType + "\" in this Model System!";
                 return false;
+            }
+            if(ZeroCostZones.Count > 0)
+            {
+                if (String.IsNullOrWhiteSpace(ZeroCostNetworkName))
+                {
+                    error = "Zero cost zones were defined however no network name was defined to load Level of Service information for them.";
+                    return false;
+                }
+                if (!AssignNetwork(networks, ZeroCostNetworkName, ref ZeroCostNetwork))
+                {
+                    error = "We were unable to find the network data with the name \"" + NetworkType + "\" in this Model System!";
+                    return false;
+                }
             }
             return true;
         }
@@ -298,14 +326,14 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
             return Network.TravelTime(origin, destination, time);
         }
 
-        private bool AssignNetwork(IList<INetworkData> networks)
+        private bool AssignNetwork(IList<INetworkData> networks, string networkName, ref ITripComponentData assignTo)
         {
             foreach (var network in networks)
             {
-                if (network.NetworkType == NetworkType)
+                if (network.NetworkType == networkName)
                 {
-                    Network = network as ITripComponentData;
-                    return Network != null;
+                    assignTo = network as ITripComponentData;
+                    return assignTo != null;
                 }
             }
             return false;

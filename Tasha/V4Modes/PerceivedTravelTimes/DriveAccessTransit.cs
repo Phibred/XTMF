@@ -109,6 +109,13 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
 
         private INetworkData AutoNetwork;
         private ITripComponentData TransitNetwork;
+        private ITripComponentData ZeroCostNetwork;
+
+        [RunParameter("Zero Cost Network", "", "The name for the network to use for residents or employees of the zero cost network.")]
+        public string ZeroCostNetworkName;
+
+        [RunParameter("Zero Cost Zones", "", typeof(RangeSet), "The zone numbers to apply the ZeroCostNetwork LoS for.")]
+        public RangeSet ZeroCostZones;
 
         [SubModelInformation(Required = true, Description = "The model that determines what station we need to get off at.")]
         public IAccessStationChoiceModel AccessStationModel;
@@ -336,6 +343,10 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
                 {
                     TransitNetwork = network as ITripComponentData;
                 }
+                else if (network.NetworkType == ZeroCostNetworkName)
+                {
+                    ZeroCostNetwork = network as ITripComponentData;
+                }
             }
             if (AutoNetwork == null)
             {
@@ -345,6 +356,16 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
             if (TransitNetwork == null)
             {
                 error = "In '" + Name + "' we were unable to find a transit network called '" + TransitNetworkName + "'";
+                return false;
+            }
+            if(ZeroCostZones.Count > 0 && String.IsNullOrEmpty(ZeroCostNetworkName))
+            {
+                error = "Zero Cost zones are defined however there is no Zero Cost Network Name to load.";
+                return false;
+            }
+            if(ZeroCostZones.Count > 0 && ZeroCostNetwork == null)
+            {
+                error = $"No Zero Cost Network was found with the name {ZeroCostNetworkName}.";
                 return false;
             }
             return true;
@@ -413,6 +434,13 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
 
         private int[] StationIndexLookup;
 
+        private bool UseZeroCostNetwork(ITashaPerson p)
+        {
+            var empZone = p.EmploymentZone?.ZoneNumber;
+            var homeZone = p.Household.HomeZone.ZoneNumber;
+            return ((empZone != null && ZeroCostZones.Contains((int)empZone)) || ZeroCostZones.Contains(homeZone));
+        }
+
         private bool BuildUtility(IZone firstOrigin, IZone secondOrigin, Pair<IZone[], float[]> accessData, IZone firstDestination, IZone secondDestination,
             ITashaPerson person, Time firstTime, Time secondTime, out float dependentUtility)
         {
@@ -437,7 +465,7 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
             var fd = zoneSystem.GetFlatIndex(firstDestination.ZoneNumber);
             var sd = zoneSystem.GetFlatIndex(secondDestination.ZoneNumber);
             totalUtil = 0;
-            var fastTransit = TransitNetwork as ITripComponentCompleteData;
+            var fastTransit = (UseZeroCostNetwork(person) ? ZeroCostNetwork : TransitNetwork) as ITripComponentCompleteData;
             var fastAuto = AutoNetwork as INetworkCompleteData;
             var stationIndexLookup = StationIndexLookup;
             if (stationIndexLookup == null)
