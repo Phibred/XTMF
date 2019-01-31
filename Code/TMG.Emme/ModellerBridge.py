@@ -1,5 +1,5 @@
 ﻿'''
-    Copyright 2014-2018 Travel Modelling Group, Department of Civil Engineering, University of Toronto
+    Copyright 2014-2017 Travel Modelling Group, Department of Civil Engineering, University of Toronto
 
     This file is part of XTMF.
 
@@ -23,10 +23,8 @@ import glob
 import time
 import math
 import array
-import Queue
 import inspect
 import timeit
-import struct
 import inro.modeller
 import traceback as _traceback
 import inro.modeller as _m
@@ -57,6 +55,15 @@ class ProgressTimer(Thread):
     def stop(self):
         self._stopped = True
 
+# A Stream that does nothing
+class NullStream:
+    # Do nothing
+     def __init__(self): 
+         pass 
+     # fake the write method
+     def write(self, data): 
+         pass
+
 # A Stream which redirects print statements to XTMF Console
 class RedirectToXTMFConsole:
     def __init__(self, xtmfBridge):
@@ -65,48 +72,23 @@ class RedirectToXTMFConsole:
     def write(self, data):
         self.bridge.SendPrintSignal(str(data))
 
-#This class is designed to encapsulate async IO writes
-class WriteMessageQueue(Thread):
-    def __init__(self, bridge, pipeIn):
-        Thread.__init__(self)
-        self._exit = False
-        self.Bridge = bridge
-        self.ToXTMF = open(pipeIn, 'wb', 0)
-        self.WriteQueue = Queue.Queue()
-        self.setDaemon(True)
-        return
+def RedirectLogbookWrite(name, attributes=None, value=None):
+    pass
 
-    def run(self):
-        try:
-            while not self._exit:
-                msg = self.WriteQueue.get()
-                self.WriteQueue.task_done()
-                if msg is not None:
-                    #self.Bridge.WriteToConsole(str(msg))
-                    for subMessage in msg:
-                        subMessage.tofile(self.ToXTMF)
-                else:
-                    return
-        except:
-            self.Bridge.WriteToConsole("We had an exception while writing!")
-        return
-
-    def add_message(self, msg):
-        self.WriteQueue.put_nowait(msg)
-        return
-
-    def kill(self):
-        self._exit = True
-        self.WriteQueue.put_nowait(None)
-        return
+@contextmanager
+def RedirectLogbookTrace(name, attributes=None, value=None, save_arguments=None):
+    try:
+        yield None
+    finally:
+        pass
 
 class XTMFBridge:
-    WriteQueue = None
+    """The stream used for sending data to XTMF"""
+    ToXTMF = None
     """The stream used for getting data from XTMF"""
     FromXTMF = None
     """Our link to the EMME modeller"""
     Modeller = None
-    _exit = False
     """The name of the field that XTMF enabled Modeller Tools will use"""
     _XTMFCallParameters = "XTMFCallParameters"
     
@@ -144,15 +126,18 @@ class XTMFBridge:
         
     """Initialize the bridge so that the tools that we run will not accidentally access the standard I/O"""
     def __init__(self):
-        self.IOLock = threading.Lock()
         self.CachedLogbookWrite = _m.logbook_write
         self.CachedLogbookTrace = _m.logbook_trace
         self.previous_level = None
-        self.FromXTMF = open(pipeOut, 'rb', 0)
-        self._oldstdout = sys.stdout
+        
+        # Redirect sys.stdout
+        sys.stdin.close()
+        self.ToXTMF = open('\\\\.\\pipe\\' + pipeName, 'wb', 0)
+        self.FromXTMF = os.fdopen(0, "rb")
+        #sys.stdout = NullStream()
+        self.IOLock = threading.Lock()
+        sys.stdin = None
         sys.stdout = RedirectToXTMFConsole(self)
-        self.WriteQueue = WriteMessageQueue(self, pipeIn);
-        self.WriteQueue.start()
         return
     
     def ReadLEB(self):
@@ -163,7 +148,7 @@ class XTMFBridge:
         while Continue:
             #unsigned array
             byteArray = array.array('B')
-            byteArray.fromfile(self.FromXTMF, 1)
+            byteArray.read(self.FromXTMF, 1)
             current = byteArray.pop()
             if current < 128:
                 Continue = False
@@ -177,18 +162,17 @@ class XTMFBridge:
         
     def ReadString(self):
         length = self.ReadLEB()
-        if length == 0:
-            return ""
         try:
             stringArray = array.array('c')
-            stringArray.fromfile(self.FromXTMF, length)
+            stringArray.read(self.FromXTMF, length)
             return stringArray.tostring() 
         except:
             return stringArray.tostring()
     
     def ReadInt(self):
-        val = struct.unpack('i', self.FromXTMF.read(4))[0]
-        return val 
+        intArray = array.array('l')
+        intArray.read(self.FromXTMF, 1)
+        return intArray.pop()
     
     def IsWhitespace(self, c):
         return (c == ' ') or (c == '\t') or (c == '\s')
@@ -314,63 +298,97 @@ class XTMFBridge:
         return string
     
     def SendString(self, stringToSend):
-        return [array.array('i', [len(stringToSend)]), array.array('c', str(stringToSend))]
-
-    def SendStartSignal(self):
-        self.WriteQueue.add_message(self.SendSignal(self.SignalStart))
+        length = len(stringToSend)
+        tempLength = length
+        bytes = 0
+        #figure out how many bytes we are going to need to store the length
+        #string
+        while tempLength > 0:
+            tempLength = tempLength >> 7
+            bytes += 1
+        lengthArray = array.array('B')
+        if length <= 0:
+            lengthArray.append(0)
+        else:
+            tempLength = length
+            for i in range(bytes):
+                current = int(tempLength >> 7)
+                current = int(current << 7)
+                diff = tempLength - current
+                if tempLength < 128:
+                    lengthArray.append(diff)
+                else:
+                    lengthArray.append(diff + 128)
+                tempLength = tempLength >> 7
+        lengthArray.write(self.ToXTMF)
+        msg = array.array('c', str(stringToSend))
+        msg.write(self.ToXTMF)       
+        return
     
     def SendToolDoesNotExistError(self, namespace):
-        self.WriteQueue.add_message(self.SendSignal(self.SignalSendToolDoesNotExistsError) \
-            + self.SendString("A tool with the following namespace could not be found: %s" % namespace))            
+        self.IOLock.acquire()
+        self.SendSignal(self.SignalSendToolDoesNotExistsError)
+        self.SendString("A tool with the following namespace could not be found: %s" % namespace)
+        self.ToXTMF.flush()
+        self.IOLock.release()
         return
 
     def SendParameterError(self, problem):
-        self.WriteQueue.add_message( \
-            self.SendSignal(self.SignalParameterError) \
-            + self.SendString(problem))
+        self.IOLock.acquire()
+        self.SendSignal(self.SignalParameterError)
+        self.SendString(problem)
+        self.ToXTMF.flush()
+        self.IOLock.release()
         return
         
     def SendRuntimeError(self, problem):
-        self.WriteQueue.add_message(\
-            self.SendSignal(self.SignalRuntimeError) \
-         + self.SendString(problem))
+        self.IOLock.acquire()
+        self.SendSignal(self.SignalRuntimeError)
+        self.SendString(problem)
+        self.ToXTMF.flush()
+        self.IOLock.release()
         return
     
     def SendSuccess(self):
-        self.WriteQueue.add_message(self.SendSignal(self.SignalRunComplete))
+        self.IOLock.acquire()
+        intArray = array.array('l')
+        intArray.append(self.SignalRunComplete)
+        intArray.write(self.ToXTMF)
+        self.ToXTMF.flush()
+        self.IOLock.release()
         return
     
     def SendReturnSuccess(self, returnValue):
-        self.WriteQueue.add_message(\
-            self.SendSignal(self.SignalRunCompleteWithParameter) \
-        + self.SendString(str(returnValue)))
+        self.IOLock.acquire()
+        self.SendSignal(self.SignalRunCompleteWithParameter)
+        self.SendString(str(returnValue))
+        self.ToXTMF.flush()
+        self.IOLock.release()
         return
     
     def SendSignal(self, signal):
-        intArray = array.array('i')
+        intArray = array.array('l')
         intArray.append(signal)
-        return [intArray]
+        intArray.write(self.ToXTMF)
+        return
     
     def SendPrintSignal(self, stringToPrint):
-        self.WriteQueue.add_message(\
-            self.SendSignal(self.SignalSendPrintMessage) \
-        + self.SendString(stringToPrint))
+        self.IOLock.acquire()
+        self.SendSignal(self.SignalSendPrintMessage)
+        self.SendString(stringToPrint)
+        self.ToXTMF.flush()
+        self.IOLock.release()
         return
 
     def ReportProgress(self, progress):
+        self.IOLock.acquire()
+        self.SendSignal(self.SignalProgressReport)
         floatArray = array.array('f')
         floatArray.append(float(progress))
-        self.WriteQueue.add_message(self.SendSignal(self.SignalProgressReport) + [floatArray])
+        floatArray.write(self.ToXTMF)
+        self.ToXTMF.flush()
+        self.IOLock.release()   
         return
-
-    def WriteToConsole(self, msg):
-        toWrite = str(msg) + "\r\n"
-        try:
-            self.IOLock.acquire()
-            self._oldstdout.write(toWrite)
-            self.IOLock.release()
-        except:
-            self._oldstdout.write("Exception while writing\r\n")
 
     def EnsureModellerToolExists(self, macroName):
         for i in range(1, 10):
@@ -467,8 +485,10 @@ class XTMFBridge:
                 timer.start()
             #Execute the tool, getting the return value
             ret = eval(callString, nameSpace, None)
+            
             if timer != None:
                 timer.stop()
+            
             nameSpace = None
             if ret == None: 
                 self.SendSuccess()
@@ -539,54 +559,47 @@ class XTMFBridge:
         _m.logbook_write("Activated modeller from ModellerBridge for XTMF")
         if performanceMode:
             _m.logbook_write("Performance Testing Activated")
+        # now that everything has been redirected we can
         # tell XTMF that we are ready
-        #Check to see if we have a beta version of EMME and if so force the compatibility tests to always pass.
-        self.SendStartSignal()
-        try:
-            while(not self._exit):
-                input = self.ReadInt()
-                if input == self.SignalTermination:
-                    _m.logbook_write("Exiting on termination signal from XTMF")
-                    self._exit = True
-                elif input == self.SignalStartModule:
-                    if performanceMode:
-                        t = timeit.Timer(self.ExecuteModule).timeit(1)
-                        _m.logbook_write(str(t) + " seconds to execute.")
-                    else:
-                        self.ExecuteModule(False)
-                elif input == self.SignalStartModuleBinaryParameters:
-                    if performanceMode:
-                        t = timeit.Timer(self.ExecuteModule).timeit(1)
-                        _m.logbook_write(str(t) + " seconds to execute.")
-                    else:
-                        self.ExecuteModule(True)
-                elif input == self.SignalCleanLogbook:
-                    self.CleanLogbook()
-                elif input == self.SignalCheckToolExists:
-                    self.CheckToolExists()
-                elif input == self.SignalDisableLogbook:
-                    self.DisableLogbook()
-                elif input == self.SignalEnableLogbook:
-                    self.EnableLogbook()
+        self.SendSignal(self.SignalStart)
+        self.ToXTMF.flush()
+        exit = False
+        while(not exit):
+            input = self.ReadInt()
+            if input == self.SignalTermination:
+                _m.logbook_write("Exiting on termination signal from XTMF")
+                exit = True
+            elif input == self.SignalStartModule:
+                if performanceMode:
+                    t = timeit.Timer(self.ExecuteModule).timeit(1)
+                    _m.logbook_write(str(t) + " seconds to execute.")
                 else:
-                    #If we do not understand what XTMF is saying quietly die
-                    self._exit = True
-                    _m.logbook_write("Exiting on bad input \"" + str(input) + "\"")
-                    self.SendSignal(self.SignalTermination)
-        finally:
-            sys.stdout = self._oldstdout
-            print "Closing the EMME application"
-            emmeApplication.close()
-            print "After closing the EMME application"
-            self.WriteQueue.kill()
-
+                    self.ExecuteModule(False)
+            elif input == self.SignalStartModuleBinaryParameters:
+                if performanceMode:
+                    t = timeit.Timer(self.ExecuteModule).timeit(1)
+                    _m.logbook_write(str(t) + " seconds to execute.")
+                else:
+                    self.ExecuteModule(True)
+            elif input == self.SignalCleanLogbook:
+                self.CleanLogbook()
+            elif input == self.SignalCheckToolExists:
+                self.CheckToolExists()
+            elif input == self.SignalDisableLogbook:
+                self.DisableLogbook()
+            elif input == self.SignalEnableLogbook:
+                self.EnableLogbook()
+            else:
+                #If we do not understand what XTMF is saying quietly die
+                exit = True
+                _m.logbook_write("Exiting on bad input \"" + input + "\"")
+                self.SendSignal(self.SignalTermination)
         return
 
     def CheckToolExists(self):
         ns = self.ReadString()
         ret = ns in self.Modeller.tool_namespaces()
         if ret == False:
-            self.WriteToConsole("Unable to find a tool named " + ns)
             _m.logbook_write("Unable to find a tool named " + ns)
         self.SendReturnSuccess(ret)
         return
@@ -601,32 +614,23 @@ class XTMFBridge:
 #end XTMFBridge
 
 #Get the project file
-args = sys.argv 
-# 0: This script's location
-# 1: Emme project file
-# 2: User initials
-# 3: Performance flag
-# 4: From XTMF -> To EMME
-# 5: From EMME -> To XTMF
-# 6: Optional; The name of the databank to use inside of the project
+args = sys.argv # 0: This script's location, 1: Emme project file, 2: User initials, 3:
+                # Performance flag
 projectFile = args[1]
 userInitials = args[2]
 performancFlag = bool(int(args[3]))
-pipeIn = args[4]
-pipeOut = args[5]
+pipeName = args[4]
 databank = None
-if len(args) > 6:
-    databank = args[6]
+if len(args) > 5:
+    databank = args[5]
 #sys.stderr.write(args)
 print userInitials
 print projectFile
-TheEmmeEnvironmentXMTF = None
 try:
-    print "Trying to load project from: " + projectFile
     TheEmmeEnvironmentXMTF = _app.start_dedicated(visible=False, user_initials=userInitials, project=projectFile)
     XTMFBridge().Run(TheEmmeEnvironmentXMTF, databank, performancFlag)
+    TheEmmeEnvironmentXMTF.close()
 except Exception as e:
-    print "Starting to write out error:"
     print dir(e).__class__
     print e.message
     print e.args

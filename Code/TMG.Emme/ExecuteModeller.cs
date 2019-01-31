@@ -89,7 +89,7 @@ path to where the Emme project is located. It also has another parameter called 
 
         public void Start()
         {
-            using ( ModellerController controller = new ModellerController(this, EmmeProjectFile, EmmeDatabank, PerformanceTesting ) )
+            using ( ModellerController controller = new ModellerController(this, EmmeProjectFile, EmmeDatabank, performanceAnalysis: PerformanceTesting ) )
             {
                 if ( CleanLogbook )
                 {

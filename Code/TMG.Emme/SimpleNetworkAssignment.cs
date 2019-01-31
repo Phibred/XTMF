@@ -172,7 +172,7 @@ and another tool for execution. This module requires the root module of the mode
         private void InitializeController()
         {
             Controller = UseModeller ?
-                  new ModellerController(this, EmmeProjectFolder, EmmeDatabank, ModellerPerformanceAnalysis)
+                  new ModellerController(this, EmmeProjectFolder, EmmeDatabank, performanceAnalysis: ModellerPerformanceAnalysis)
                 : new Controller(EmmeProjectFolder);
         }
 
