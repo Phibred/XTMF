@@ -434,11 +434,13 @@ namespace Tasha.V4Modes.PerceivedTravelTimes
 
         private int[] StationIndexLookup;
 
+        [RunParameter("Employee Benefits", true, "Include the employment zone when seeing if we should use the zero cost network.")]
+        public bool EmployeeBenefits;
         private bool UseZeroCostNetwork(ITashaPerson p)
         {
             var empZone = p.EmploymentZone?.ZoneNumber;
             var homeZone = p.Household.HomeZone.ZoneNumber;
-            return ((empZone != null && ZeroCostZones.Contains((int)empZone)) || ZeroCostZones.Contains(homeZone));
+            return ((empZone != null && EmployeeBenefits && ZeroCostZones.Contains((int)empZone)) || ZeroCostZones.Contains(homeZone));
         }
 
         private bool BuildUtility(IZone firstOrigin, IZone secondOrigin, Pair<IZone[], float[]> accessData, IZone firstDestination, IZone secondDestination,
